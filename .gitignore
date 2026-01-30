@@ -1,0 +1,32 @@
+# Persistence & Local State
+.vibesync/
+logs/
+mcp-server/vibe-mcp-server
+mcp-server/state.json
+mcp-server/wal.jsonl
+mcp-server/events.jsonl
+
+# Monetization (Internal Strategy)
+metadata/MONETIZATION_STRATEGY.md
+
+# Build Artifacts
+bin/
+obj/
+*.exe
+*.dll
+*.so
+*.out
+
+# Editor Specifics
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln
+*.csproj
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/

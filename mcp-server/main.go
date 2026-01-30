@@ -177,7 +177,55 @@ func sendToEngine(target, endpoint, method string, data interface{}) (map[string
 	return nil, fmt.Errorf("ENGINE_ERROR | %v", lastErr)
 }
 
-// ... attemptSend remains same ...
+func attemptSend(target, endpoint, method string, data interface{}) (map[string]interface{}, error) {
+	stateMu.RLock(); engine, ok := engines[target]; stateMu.RUnlock()
+	if !ok || engine.State == StatePanic || engine.State == StateHumanReq { return nil, fmt.Errorf("LOCKED") }
+	if time.Now().After(engine.TrustExpiry) && engine.State == StateRunning { return nil, fmt.Errorf("EXPIRED") }
+
+	port := UnityPort
+	if target == "blender" { port = BlenderPort }
+	url := fmt.Sprintf("http://localhost:%d/%s", port, endpoint)
+
+	mid := nextMonotonicID()
+	tid := ""
+	if m, ok := data.(map[string]interface{}); ok {
+		m["generation"] = engine.Generation
+		m["session_id"] = currentSessionID
+		m["monotonic_id"] = mid
+		
+		txMu.Lock()
+		if activeTransaction != nil { 
+			tid = activeTransaction.ID
+			m["tid"] = tid
+			m["parent_id"] = tid 
+		}
+		txMu.Unlock()
+	}
+	
+	jsonBody, _ := json.Marshal(data)
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonBody))
+	if err != nil { return nil, err }
+	
+	req.Header.Set("X-Vibe-Token", engine.Token)
+	req.Header.Set("X-Vibe-Session", currentSessionID)
+	req.Header.Set("X-Vibe-Generation", fmt.Sprintf("%d", engine.Generation))
+	if tid != "" { req.Header.Set("X-Vibe-Transaction", tid) }
+	req.Header.Set("Content-Type", "application/json")
+	
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil { return nil, err }
+	defer resp.Body.Close()
+	
+	var res map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		if resp.StatusCode >= 400 { return nil, fmt.Errorf("HTTP %d", resp.StatusCode) }
+		return nil, err
+	}
+	
+	journalOperation(map[string]interface{}{"type": "engine_call", "target": target, "endpoint": endpoint, "mid": mid})
+	return res, nil
+}
 
 func verifyEngineState(ctx context.Context, target, endpoint string) {
 	log.Printf("🔍 REFEREE | Verifying %s after %s", target, endpoint)

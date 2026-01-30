@@ -27,10 +27,13 @@
 | ⚛️ **Atomic Sync** | Transactional pipeline (**Snapshot → Preflight → Commit**) with automatic rollback. |
 | 🚧 **Semantic Firewall** | AST-based auditing blocks dangerous payloads (`os.system`, `Reflection`) before execution. |
 | 💔 **Deadman Switch** | 5000ms Heartbeat monitor; triggers immediate **Global PANIC** lock on deadlocks. |
+| 🐳 **Docker Isolation** | Minimal Alpine-based containerization for the Go Orchestrator to ensure environment isolation. |
+| ⚖️ **Security Gate** | Pre-execution auditor (`security_gate.py`) that enforces the "Iron Box" constraints across all codebases. |
+| 🛡️ **OS Hardening** | Host-level kernel hardening script (`scripts/harden.sh`) using `sysctl`, `ufw`, and `AppArmor` for deep system defense. |
 
 ---
 
-## 🏛️ Architecture: The Orchestrator and the Adapters
+## 🧠 AI Safety & Adversarial Robustness
 
 The system is split into two distinct layers to ensure absolute pipeline safety:
 

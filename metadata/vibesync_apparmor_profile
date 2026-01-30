@@ -1,0 +1,24 @@
+# AppArmor profile for VibeSync Orchestrator (v0.4)
+# Target: /usr/local/bin/vibesync-orchestrator (or wherever the binary resides)
+
+profile vibesync-orchestrator /home/*/VibeSync/mcp-server/vibesync-orchestrator {
+  # Include common abstractions
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+
+  # Network: Only allow localhost communication
+  network tcp,
+  # This is a simplification; AppArmor doesn't easily restrict TCP to localhost
+  # in a basic profile without network namespaces, but we rely on UFW for that.
+
+  # File Access: Strictly limit to project and persistence dirs
+  /home/*/VibeSync/mcp-server/vibesync-orchestrator mr,
+  /home/*/VibeSync/.vibesync/** rw,
+  /home/*/VibeSync/.vibesync/tmp/** rwk,
+
+  # Deny everything else
+  deny /home/** w,
+  deny /etc/** w,
+  deny /var/** w,
+  deny /root/** w,
+}

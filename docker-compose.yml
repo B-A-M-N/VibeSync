@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vibesync-orchestrator
+    network_mode: "host"
+    volumes:
+      - ./.vibesync:/home/vibesync/.vibesync
+    restart: unless-stopped
+    # Security Hardening
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    environment:
+      - VIBE_UNITY_BOOTSTRAP_SECRET=${VIBE_UNITY_BOOTSTRAP_SECRET:-VIBE_UNITY_BOOTSTRAP_SECRET}
+      - VIBE_BLENDER_BOOTSTRAP_SECRET=${VIBE_BLENDER_BOOTSTRAP_SECRET:-VIBE_BLENDER_BOOTSTRAP_SECRET}

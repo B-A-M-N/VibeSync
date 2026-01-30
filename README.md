@@ -33,7 +33,7 @@
 
 ---
 
-## 🧠 AI Safety & Adversarial Robustness
+## 🏛️ Architecture: The Orchestrator and the Adapters
 
 The system is split into two distinct layers to ensure absolute pipeline safety:
 

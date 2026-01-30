@@ -18,6 +18,7 @@ services:
           memory: 512M
     security_opt:
       - no-new-privileges:true
+      - seccomp:./metadata/seccomp_profile.json
     cap_drop:
       - ALL
     cap_add:

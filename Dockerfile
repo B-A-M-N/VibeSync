@@ -1,27 +1,30 @@
 # Stage 1: Build the Go binary
-FROM golang:1.23-alpine AS builder
+# Upgrade to 1.24 to address stdlib vulnerabilities (CVEs)
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
 # Copy go mod and sum files
-COPY mcp-server/go.mod mcp-server/go.sum ./
+COPY mcp-server/go.mod mcp-server/go.sum $WORKDIR/
 RUN go mod download
 
 # Copy the source code
-COPY mcp-server/ ./
+COPY mcp-server/ $WORKDIR/
 
-# Build the binary with security flags
-RUN CGO_ENABLED=0 GOOS=linux go build \
+# Build the binary with advanced security flags:
+# -trimpath: Remove file system paths from the binary
+# -buildmode=pie: Position Independent Executable (ASLR support)
+# -ldflags: Strip symbols (-s -w)
+RUN CGO_ENABLED=1 GOOS=linux go build \
     -trimpath \
-    -ldflags="-s -w" \
+    -buildmode=pie \
+    -ldflags="-s -w -extldflags '-static'" \
     -o vibesync-orchestrator .
 
 # Stage 2: Hardened Runtime
 FROM alpine:latest
 
 # Install lightweight security packages
-# tini: Proper signal handling
-# libcap: For managing capabilities
 RUN apk --no-cache add ca-certificates tini libcap
 
 # Create a non-root user

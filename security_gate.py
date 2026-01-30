@@ -16,6 +16,8 @@ PROHIBITED_PATTERNS = [
     (r"System\.IO\.File\.(?!ReadAllText|WriteAllText)", "DANGEROUS: Raw file system access outside sanctioned APIs."),
     (r"http://(?!localhost)", "DANGEROUS: Non-localhost network access."),
     (r"https://(?!localhost)", "DANGEROUS: Non-localhost network access."),
+    (r"api_key\s*=\s*['\"][a-zA-Z0-9]{20,}['\"]", "DANGEROUS: Potential hardcoded API key."),
+    (r"token\s*=\s*['\"][a-zA-Z0-9]{20,}['\"]", "DANGEROUS: Potential hardcoded secret token."),
 ]
 
 def audit_file(file_path):

@@ -29,20 +29,18 @@ A written waiver granted by the Author at their sole discretion.
 
 ---
 
-## 3. OPEN-CORE, REMOTE OPERATION CREDITS & EARLY ACCESS
-VibeSync employs an **Open-Core** model where basic synchronization is unrestricted. Advanced "Complex Operations" are intended to be gated via the Go-based Orchestrator.
+## 3. OPEN-CORE, R&D OPERATIONS & EARLY ACCESS
+VibeSync employs an **Open-Core** model. During the active research and development phase, **ALL** Unity ↔ Blender orchestration features—including complex AI and Vision tiers—are provided at **Zero Cost** for public non-commercial use to facilitate community stress-testing.
 
-**EARLY ACCESS PERIOD**: During the v0.x development phase, **ALL** features (including Complex and Vision tiers) are provided at **Zero Cost** to encourage community testing and feedback. 
+**TRANSITION POLICY**: Upon v1.0, the Author reserves the right to activate a **Credit-Gate** for advanced, high-compute, or commercial-use operations. This monetization supports continued development of the core bridge. Notice will be provided 30 days prior.
 
-**TRANSITION POLICY**: Upon the release of v1.0, the Author reserves the right to activate the **Credit-Gate** for high-compute or AI-driven operations as defined in the project's Monetization Matrix. Notice of transition will be provided at least 30 days prior to enforcement.
-
-| Operation Tier | Cost (Early Access) | Final Tier (v1.0+) |
+| Operation Tier | Cost (R&D Phase) | Final Tier (v1.0+) |
 | :--- | :--- | :--- |
-| **Basic Sync** | **Free** | **Free** |
-| **Complex Sync** | **Free** | **Credits Required** |
-| **Vision Tools** | **Free** | **Credits Required** |
+| **Unity/Blender Basic Sync** | **Free** | **Free** |
+| **Advanced AI/Complex Sync** | **Free** | **Credits Required** |
+| **Vision/Audit Tools** | **Free** | **Credits Required** |
 
-**SERVICE COMPLIANCE**: Access to Remote/Cloud operations is provided as a service. In accordance with Section 13 of the AGPLv3, the Author reserves the right to charge for access to these networked services even when the client-side bridge code is open source.
+**SERVICE COMPLIANCE & LIABILITY**: Users acknowledge that these experimental bridges can cause significant state corruption in Unity and Blender. Use is at the user's sole risk. See Section 5 for full liability limitations.
 
 ---
 

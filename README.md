@@ -57,7 +57,7 @@ VibeSync is a high-fidelity orchestration system...
 VibeSync is distributed under a **Dual-Licensing Model**.
 
 1. **Open-Source Path (AGPLv3)**: Free for non-commercial use.
-   - **SOURCE ACCESS**: In accordance with Section 13 of the AGPLv3, if you run a modified version of this software over a network, you must provide a way for users to access your source code. You can find our official source at: `[Your GitHub Repository Link]`.
+   - **SOURCE ACCESS**: In accordance with Section 13 of the AGPLv3, if you run a modified version of this software over a network, you must provide a way for users to access your source code. You can find our official source at: `https://github.com/B-A-M-N/VibeSync.git`.
 2. **Commercial Path ("Work-or-Pay")**: For revenue-generating entities. Requires either maintenance contributions or a license fee.
 3. **Operation Credits**: Basic sync is free. Complex AI-driven operations (Optimization, Vision Audits) are gated via the **Go Hub Credit System**.
 

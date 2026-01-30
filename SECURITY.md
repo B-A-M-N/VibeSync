@@ -3,7 +3,7 @@
 VibeSync is a **Zero-Trust Orchestrator**. We take security and state integrity extremely seriously.
 
 ## Supported Versions
-Only the latest version of VibeSync (currently v0.3 "Crowbar") is supported for security updates.
+Only the latest version of VibeSync (currently v0.4 "Crowbar") is supported for security updates.
 
 ## Reporting a Vulnerability
 If you discover a security vulnerability (e.g., a way to bypass the semantic firewall or an unauthorized state mutation), please **do not open a public issue.**

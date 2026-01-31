@@ -1,3 +1,7 @@
+⚠️ **Not Technical? Start Here!**  
+If you’re new to AI-assisted Blender/Unity workflows, don’t worry. We’ve created a **Complete Beginner’s Manual** that explains everything step by step, from setup to safe usage.  
+👉 [**Beginner’s Manuals & Safety Guides**](#-user-guides--learning)
+
 # 🌌 VibeSync: Atomic Unity ↔ Blender Sync
 
 **VibeSync is a live bridge that synchronizes Blender and Unity scenes automatically, safely, and in real time.**

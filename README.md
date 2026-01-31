@@ -1,7 +1,3 @@
-⚠️ **Not Technical? Start Here!**  
-If you’re new to AI-assisted Blender/Unity workflows, don’t worry. We’ve created a **Complete Beginner’s Manual** that explains everything step by step, from setup to safe usage.  
-👉 [**Beginner’s Manuals & Safety Guides**](#-user-guides--learning)
-
 # 🌌 VibeSync: Atomic Unity ↔ Blender Sync
 
 **VibeSync is a live bridge that synchronizes Blender and Unity scenes automatically, safely, and in real time.**
@@ -55,6 +51,11 @@ sequenceDiagram
 3.  **Connect Adapters**: Follow the **[Handshake Guide](HUMAN_ONLY/INSTALL.md)** to install and launch the Unity and Blender plugins.
 4.  **Sync Test**: Use the AI or CLI to run `handshake_init` followed by `sync_transform` to verify the connection.
 
+> [!IMPORTANT]
+> ⚠️ **Not Technical? Start Here!**  
+> If you’re new to AI-assisted Blender/Unity workflows, don’t worry. We’ve created a **Complete Beginner’s Manual** that explains everything step by step, from setup to safe usage.  
+> 👉 [**Beginner’s Manuals & Safety Guides**](#-user-guides--learning)
+
 ---
 
 ## 💡 Example Use Case: Transform Sync
@@ -79,7 +80,7 @@ VibeSync turns the "export/import" nightmare into a deterministic state flow.
 ---
 
 ## 🚫 What VibeSync is NOT
-VibeSync follows a strict doctrine of intentional limitation. 
+VibeSync follows a guest doctrine of intentional limitation. 
 *   **Not a File Exporter**: It doesn't just write FBX files; it manages live engine state.
 *   **Not a Pipeline Replacement**: It augments your existing workflow; it doesn't replace your asset source of truth.
 *   **Not a Magic Button**: It is a governed control plane that requires both engines to be in a valid handshake state.

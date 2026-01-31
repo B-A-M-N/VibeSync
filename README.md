@@ -96,6 +96,7 @@ VibeSync is built on a foundation of distributed systems rigor and zero-trust se
 - 🛡️ **[Security Governance](metadata/SECURITY_GOVERNANCE.md)**: Details on "The Iron Box," HMAC signing, and AST auditing.
 - 🧠 **[AI Safety Protocol](metadata/AI_SAFETY_PROTOCOL.md)**: How we prevent AI psychosis and ensure adversarial robustness.
 - ⚖️ **[Formal Guarantees](metadata/FORMAL_GUARANTEES.md)**: The "Rules of Reality" and causality logic.
+- 🔄 **[Master Procedural Flow](metadata/PROCEDURAL_FLOW.md)**: The strict, step-by-step lifecycle for deterministic syncing.
 
 ---
 

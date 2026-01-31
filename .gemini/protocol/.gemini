@@ -1,0 +1,7 @@
+# PROTOCOL IS CONTRACT
+
+- Message formats are immutable.
+- Do NOT rename fields or reorder payloads.
+- Protocol changes require version bumps.
+- Assume both sides may be running different versions.
+- Reference: BRIDGE_CONTRACT.md

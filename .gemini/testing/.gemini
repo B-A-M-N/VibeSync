@@ -1,0 +1,6 @@
+# TEST UNDER FAILURE
+
+- Assume slow, missing, or malformed messages.
+- Test disconnects and mid-stream restarts.
+- Happy-path-only testing is invalid.
+- Use Golden Set Regression Testing for all new thresholds.

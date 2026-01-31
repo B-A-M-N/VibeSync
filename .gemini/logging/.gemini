@@ -1,0 +1,7 @@
+# LOGGING IS SYSTEM-CRITICAL
+
+- Logs must be traceable across runtimes.
+- Preserve correlation identifiers (TID/MID).
+- Do NOT suppress warnings or errors.
+- Silent desync is unacceptable.
+- Log symmetry across Go, C#, and Python is mandatory.

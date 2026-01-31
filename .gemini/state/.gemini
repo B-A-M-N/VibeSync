@@ -1,0 +1,7 @@
+# STATE AUTHORITY RULES
+
+- State has a single owner at any moment.
+- Do NOT merge state heuristically.
+- Conflicts must be surfaced, not hidden.
+- Rollback is preferable to corruption.
+- Follow absolute invariants in metadata/PROCEDURAL_FLOW.md

@@ -1,0 +1,7 @@
+# HANDSHAKE ORDER IS FIXED
+
+- Startup sequence is intentional.
+- Do NOT reorder handshake steps.
+- Timeouts are not errors; they are signals.
+- Recovery must return to a known state.
+- Follow Phase 0 of metadata/PROCEDURAL_FLOW.md

@@ -1,0 +1,7 @@
+# SYNC LOOP CONSTRAINTS
+
+- Loop cadence is deliberate.
+- Do NOT increase frequency without instruction.
+- Backpressure must propagate upstream.
+- Dropped frames are safer than desync.
+- Adhere to metadata/FREEZE_PROOF_GUIDE.md

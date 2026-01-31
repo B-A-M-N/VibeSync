@@ -99,6 +99,7 @@ VibeSync is built on a foundation of distributed systems rigor and zero-trust se
 - 🛡️ **[Security Governance](metadata/SECURITY_GOVERNANCE.md)**: Details on "The Iron Box," HMAC signing, and AST auditing.
 - 🧠 **[AI Safety Protocol](metadata/AI_SAFETY_PROTOCOL.md)**: How we prevent AI psychosis and ensure adversarial robustness.
 - 🤖 **[AI Workflow Instructions](metadata/AI_WORKFLOW.md)**: Pain-point focused procedural rules for AI bridge operators.
+- 📜 **[Bridge Contract](BRIDGE_CONTRACT.md)**: Absolute authority boundaries and operational guarantees.
 - ⚖️ **[Formal Guarantees](metadata/FORMAL_GUARANTEES.md)**: The "Rules of Reality" and causality logic.
 - 🔄 **[Master Procedural Flow](metadata/PROCEDURAL_FLOW.md)**: The strict, step-by-step lifecycle for deterministic syncing.
 - ❄️ **[Freeze-Proof Guide](metadata/FREEZE_PROOF_GUIDE.md)**: Critical technical patterns to prevent engine deadlocks and hangs.

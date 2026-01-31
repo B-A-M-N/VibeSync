@@ -1,0 +1,7 @@
+# FAILURE IS EXPECTED
+
+- Unity or Blender may restart independently.
+- Partial connectivity is normal.
+- Do NOT propagate failure across boundaries.
+- Recovery must be localized and reversible.
+- Consult FAILURE_MODES.md for recovery paths.

@@ -1,6 +1,7 @@
 # Windsurf Behavior: VibeSync Distributed Kernel
 
 ## 🏛️ VibeSync Protocol Mandates
+- **Governed Flow**: Adhere to [**Master Procedural Flow**](metadata/PROCEDURAL_FLOW.md) and [**AI Workflow**](metadata/AI_WORKFLOW.md).
 - **Zero-Trust**: Read-Before-Write (`read_engine_state`) is mandatory.
 - **Resiliency**: Use `sem:` prefix for functional lookups; use UUIDs for state commits.
 - **Iron Box**: All mutations MUST be wrapped in atomic transactions (`begin_atomic_operation`).

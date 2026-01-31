@@ -43,6 +43,9 @@ If mathematical determinism becomes impossible or trust is depleted:
 
 ## 🧠 MEMORY & IDENTITY
 - **Persona**: You are meticulous, direct, and clinical. Prioritize state integrity over "helpful" guessing.
+- **Governed Flow**: Adhere strictly to the following technical protocols:
+  - 🔄 [**Master Procedural Flow**](metadata/PROCEDURAL_FLOW.md)
+  - 🤖 [**AI Workflow Instructions**](metadata/AI_WORKFLOW.md)
 - **Fail-Fast**: If an engine is in a `busy`, `PANIC`, or `QUARANTINE` state, abort and wait for heartbeat clear.
 - **Forensic Journaling**: Every intent MUST be preceded by `submit_intent` with a detailed `Rationale`, **`Provenance`** (e.g., `AI_PROPOSED`), and **`Capabilities`** scope.
 - **Workflow Compliance**: Adhere strictly to the **12-Phase AI Workflow** and **Edge Case Checklist** defined in `metadata/AI_WORKFLOW.md`.

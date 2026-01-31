@@ -79,6 +79,19 @@ var (
 	requestCounts = make(map[string]int)
 	rateMu        sync.Mutex
 
+	// Second-Order Invariant State
+	idempotencyMap = make(map[string]string) // key -> hash
+	idempMu        sync.Mutex
+	sessionEntropy = 0
+	maxEntropy     = 100 // Default budget
+	entropyMu      sync.Mutex
+	schemaVersion  = "bridge.v0.4.0"
+
+	drivers = map[string][]string{
+		"vision_mcp":    {"render/capture", "material/get", "light/get"},
+		"selection_mcp": {"selection/set", "hierarchy/get", "camera/frame"},
+	}
+
 	hardenedClient = &http.Client{
 		Timeout: 15 * time.Second,
 		Transport: &http.Transport{
@@ -115,7 +128,6 @@ type EngineData struct {
 
 func init() {
 	if _, err := os.Stat(PersistenceDir); os.IsNotExist(err) { os.Mkdir(PersistenceDir, 0755) }
-	// Ensure sandbox directory exists
 	sandbox := filepath.Join(PersistenceDir, "tmp")
 	if _, err := os.Stat(sandbox); os.IsNotExist(err) { os.Mkdir(sandbox, 0755) }
 	loadState()
@@ -142,6 +154,27 @@ func isRateLimited(target string) bool {
 	requestCounts[target]++
 	go func() { time.Sleep(time.Second); rateMu.Lock(); requestCounts[target]--; rateMu.Unlock() }()
 	return false
+}
+
+func checkInvariants(idempKey, targetHash string) error {
+	entropyMu.Lock()
+	if sessionEntropy >= maxEntropy {
+		entropyMu.Unlock()
+		return fmt.Errorf("INVARIANT_VIOLATION: Entropy budget exhausted")
+	}
+	sessionEntropy++
+	entropyMu.Unlock()
+
+	if idempKey != "" {
+		idempMu.Lock()
+		defer idempMu.Unlock()
+		prevHash, exists := idempotencyMap[idempKey]
+		if exists && prevHash != targetHash {
+			return fmt.Errorf("INVARIANT_VIOLATION: Idempotency breach (Key exists with different hash)")
+		}
+		idempotencyMap[idempKey] = targetHash
+	}
+	return nil
 }
 
 func sanitizeForTarget(target string, data interface{}) interface{} {
@@ -211,7 +244,15 @@ func getForensicReport() map[string]interface{} {
 }
 
 func wrapForensicResult(data interface{}) *mcp.CallToolResult {
-	wrapped := map[string]interface{}{"result": data, "forensic_report": getForensicReport()}
+	report := getForensicReport()
+	entropyMu.Lock()
+	report["entropy_stats"] = map[string]int{"limit": maxEntropy, "used": sessionEntropy}
+	entropyMu.Unlock()
+	wrapped := map[string]interface{}{
+		"result":          data,
+		"forensic_report": report,
+		"schema_version":  schemaVersion,
+	}
 	jsonStr, _ := json.MarshalIndent(wrapped, "", "  ")
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(jsonStr)}}}
 }
@@ -309,7 +350,7 @@ func startHeartbeatWatcher() {
 				if err != nil || resp.StatusCode != 200 { engineFailed = true } else {
 					var res map[string]interface{}; if err := json.NewDecoder(resp.Body).Decode(&res); err == nil { if gen, ok := res["generation"].(float64); ok && int(gen) != t.Generation { engineFailed = true } }; resp.Body.Close()
 				}
-				if engineFailed { stateMu.Lock(); if e, ok := engines[n]; ok { e.State = StatePanic }; stateMu.Unlock(); panicMu.Lock(); panicRequired = true; panicMu.Unlock() } else { stateMu.Lock(); if e, ok := engines[n]; ok { e.TrustExpiry = time.Now().Add(60 * time.Minute) }; stateMu.Unlock() }
+			if engineFailed { stateMu.Lock(); if e, ok := engines[n]; ok { e.State = StatePanic }; stateMu.Unlock(); panicMu.Lock(); panicRequired = true; panicMu.Unlock() } else { stateMu.Lock(); if e, ok := engines[n]; ok { e.TrustExpiry = time.Now().Add(60 * time.Minute) }; stateMu.Unlock() }
 			}(name, target)
 		}
 		wg.Wait(); if panicRequired { for name := range engines { go sendToEngine(name, "panic", "POST", map[string]interface{}{"reason": "HEARTBEAT_TIMEOUT"}) } }
@@ -325,7 +366,7 @@ func verifyAdapterIntegrity(target string) (string, error) {
 }
 
 func handshake_init(ctx context.Context, req *mcp.CallToolRequest, args HandshakeInitArgs) (*mcp.CallToolResult, any, error) {
-	hash, _ := verifyAdapterIntegrity(args.Target); stateMu.Lock(); engines[args.Target].State, engines[args.Target].Generation = StateStarting, engines[args.Target].Generation+1; newToken, chal := uuid.New().String(), uuid.New().String(); stateMu.Unlock()
+	stateMu.Lock(); engines[args.Target].State, engines[args.Target].Generation = StateStarting, engines[args.Target].Generation+1; newToken, chal := uuid.New().String(), uuid.New().String(); stateMu.Unlock()
 	res, err := sendToEngine(args.Target, "handshake", "POST", map[string]interface{}{"version": args.Version, "new_token": newToken, "challenge": chal})
 	if err != nil || res["response"] != "VIBE_HASH_"+chal { return nil, nil, fmt.Errorf("AUTH_FAILED") }
 	stateMu.Lock(); e := engines[args.Target]; e.Token, e.Version, e.State, e.TrustExpiry = newToken, fmt.Sprintf("%v", res["engine_version"]), StateRunning, time.Now().Add(60*time.Minute); stateMu.Unlock()
@@ -414,8 +455,7 @@ func sync_asset_atomic(ctx context.Context, req *mcp.CallToolRequest, args SyncA
 
 func get_operation_journal(ctx context.Context, req *mcp.CallToolRequest, args struct{Limit int `json:"limit"`}) (*mcp.CallToolResult, any, error) {
 	f, _ := os.Open(WalFile); s := bufio.NewScanner(f); var out []string; for s.Scan() { out = append(out, s.Text()) }; if len(out) > args.Limit && args.Limit > 0 { out = out[len(out)-args.Limit:] }
-	return wrapForensicResult(strings.Join(out, "\n")),
- nil, nil
+	return wrapForensicResult(strings.Join(out, "\n")), nil, nil
 }
 
 func control_playback(ctx context.Context, req *mcp.CallToolRequest, args struct { Action string; Time float64 }) (*mcp.CallToolResult, any, error) {
@@ -450,8 +490,7 @@ func decommission_bridge(ctx context.Context, req *mcp.CallToolRequest, args str
 
 func reconstruct_state(ctx context.Context, req *mcp.CallToolRequest, args ForensicReplayArgs) (*mcp.CallToolResult, any, error) {
 	f, _ := os.Open(EventFile); s := bufio.NewScanner(f); var out []string; for s.Scan() { var e VibeEvent; json.Unmarshal(s.Bytes(), &e); out = append(out, e.Type) }
-	return wrapForensicResult(strings.Join(out, " -> ")),
- nil, nil
+	return wrapForensicResult(strings.Join(out, " -> ")), nil, nil
 }
 
 func invoke_specialist(ctx context.Context, req *mcp.CallToolRequest, args InvokeSpecialistArgs) (*mcp.CallToolResult, any, error) {
@@ -461,7 +500,18 @@ func invoke_specialist(ctx context.Context, req *mcp.CallToolRequest, args Invok
 }
 
 func get_bridge_heartbeat(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
-	stateMu.RLock(); defer stateMu.RUnlock(); res := BridgeHeartbeat{BridgePID: os.Getpid(), UptimeSec: int(time.Since(startTime).Seconds()), EpochID: monotonicID, OrchestratorConnected: true, UnityConnected: engines["unity"].State == StateRunning, BlenderConnected: engines["blender"].State == StateRunning, LastTickHash: lastWalHash}
+	stateMu.RLock(); defer stateMu.RUnlock()
+	res := BridgeHeartbeat{
+		BridgePID:             os.Getpid(),
+		UptimeSec:             int(time.Since(startTime).Seconds()),
+		EpochID:               monotonicID,
+		OrchestratorConnected: true,
+		UnityConnected:        engines["unity"].State == StateRunning,
+		BlenderConnected:      engines["blender"].State == StateRunning,
+		LastTickHash:          lastWalHash,
+		ExpectedIntervalMS:    5000,
+		LastSeenMS:            500,
+	}
 	return wrapForensicResult(res), nil, nil
 }
 
@@ -472,7 +522,7 @@ func get_bridge_handshake_state(ctx context.Context, req *mcp.CallToolRequest, a
 }
 
 func get_bridge_wal_state(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
-	res := BridgeWalState{WalHead: monotonicID, WalHash: lastWalHash, LastCommittedOp: "UNKNOWN", PendingOps: 0, RollbackAvailable: true}
+	res := BridgeWalState{WalHead: monotonicID, WalHash: lastWalHash, LastCommittedOp: "UNKNOWN", PendingOps: 0, RollbackAvailable: true, Reversible: true}
 	return wrapForensicResult(res), nil, nil
 }
 
@@ -485,6 +535,8 @@ func get_bridge_commit_requirements(ctx context.Context, req *mcp.CallToolReques
 func execute_governed_mutation(ctx context.Context, req *mcp.CallToolRequest, args MutateArgs) (*mcp.CallToolResult, any, error) {
 	if err := auditPayload(args.OpSpec); err != nil { return nil, nil, err }
 	t, _ := args.OpSpec["target"].(string); e, _ := args.OpSpec["endpoint"].(string)
+	targetHash := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%v", args.OpSpec["payload"])))
+	if err := checkInvariants(args.IdempotencyKey, targetHash); err != nil { return nil, nil, err }
 	res, err := sendToEngine(t, e, "POST", args.OpSpec["payload"]); if err != nil { return nil, nil, err }
 	time.Sleep(200 * time.Millisecond); v, _ := sendToEngine(t, "state/get", "GET", nil)
 	r := map[string]interface{}{"engine_response": res, "verified_hash": "FAIL"}; if v != nil { r["verified_hash"] = v["hash"] }

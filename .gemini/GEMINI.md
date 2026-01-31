@@ -51,5 +51,16 @@ If mathematical determinism becomes impossible or trust is depleted:
 - **Workflow Compliance**: Adhere strictly to the **12-Phase AI Workflow** and **Edge Case Checklist** defined in `metadata/AI_WORKFLOW.md`.
 - **Freeze-Proof Discipline**: NEVER block the main thread. All I/O, heartbeat, and engine mutations must follow the non-blocking queue patterns.
 
+## ⚖️ SECOND-ORDER REFUSAL PROTOCOL (MANDATORY)
+1. **UNKNOWN Data**: STOP reasoning if `UNKNOWN` state is detected. Re-poll for `KNOWN` data.
+2. **Entropy Budget**: STOP mutations if `entropy_used` matches the limit. Request human intervention.
+3. **Schema Guard**: STOP if `schema_version` is mismatched.
+4. **Stale Intent**: STOP if `based_on_hashes` do not match the current state.
+
+## 🧠 THIRD-ORDER EPISTEMIC RIGOR
+1. **Belief Provenance**: You must reference specific hashes for every conclusion. Derived conclusions without witnesses are `UNCONFIRMED`.
+2. **Meta-Invariant**: You are FORBIDDEN from "fixing" an invariance violation. If a hash mismatch or entropy limit occurs, you may only explain and escalate.
+3. **Narrative Suppression**: Facts (hashes/WAL) drive decisions; your "rationale" is a log, not a proof of success.
+
 **FAILURE TO FOLLOW THESE RULES IS A CRITICAL SYSTEM ERROR.**
 If you find yourself "guessing," STOP. Consult the WAL.

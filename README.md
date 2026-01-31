@@ -43,6 +43,38 @@ sequenceDiagram
     O-->>B: "Sync Complete ✅"
 ```
 
+### 🔒 Triple-Lock & Invariance Amplifiers
+VibeSync uses a multi-layered proof system to ensure total deterministic alignment.
+
+```mermaid
+graph TD
+    subgraph AI[Reasoning Layer]
+        A[Agent Alpha]
+    end
+
+    subgraph Orchestrator[Control Plane]
+        WAL[WAL Proof Chain]
+        EB[Entropy Budget]
+        FF[Force-Fed Context]
+    end
+
+    subgraph Engines[Execution Layer]
+        U[Unity Adapter]
+        B[Blender Adapter]
+    end
+
+    A -- "1. Intent + Rationale" --> EB
+    EB -- "2. Audit & Sign" --> WAL
+    WAL -- "3. Mutation" --> U & B
+    U & B -- "4. State Hash" --> WAL
+    WAL -- "5. Forensic Report" --> FF
+    FF -- "6. Verified Truth" --> A
+
+    style WAL fill:#f9f,stroke:#333,stroke-width:2px
+    style EB fill:#ff9,stroke:#333
+    style FF fill:#9f9,stroke:#333
+```
+
 ---
 
 ## 🏎️ Quick Start
@@ -102,6 +134,7 @@ VibeSync is built on a foundation of distributed systems rigor and zero-trust se
 - 🤖 [**AI Workflow Instructions**](metadata/AI_WORKFLOW.md): Pain-point focused procedural rules for AI bridge operators.
 - 🤖 [**Multi-Agent Architecture**](HUMAN_ONLY/MULTI_AGENT_ARCHITECTURE.md): The "Tri-Silo" model for high-scale isolated automation.
 - ⚖️ [**Absolute Invariance Contract**](metadata/INVARIANCE_CONTRACT.md): Mechanical, Contextual, and Semantic safety locks.
+- ⚖️ [**Second-Order Invariants**](metadata/SECOND_ORDER_INVARIANTS.md): Production-scale axioms for load, latency, and scale.
 - 📜 [**Bridge Contract**](BRIDGE_CONTRACT.md): Absolute authority boundaries and operational guarantees.
 - ⚖️ **[Formal Guarantees](metadata/FORMAL_GUARANTEES.md)**: The "Rules of Reality" and causality logic.
 - 🔄 **[Master Procedural Flow](metadata/PROCEDURAL_FLOW.md)**: The strict, step-by-step lifecycle for deterministic syncing.

@@ -29,23 +29,34 @@ const (
 )
 
 type VibeBaseModel struct {
-	Generation  int    `json:"generation"`
-	SessionID   string `json:"session_id"`
-	MonotonicID int64  `json:"monotonic_id"`
-	IntentID    string `json:"intent_id,omitempty"`
+	Generation    int    `json:"generation"`
+	SessionID     string `json:"session_id"`
+	MonotonicID   int64  `json:"monotonic_id"`
+	MonotonicTick int64  `json:"monotonic_tick"`
+	IntentID      string `json:"intent_id,omitempty"`
+	SchemaVersion string `json:"schema_version"`
 }
 
 type IntentEnvelope struct {
-	InstructionHash string    `json:"instruction_hash"`
-	PlanHash        string    `json:"plan_hash"`
-	Rationale       string    `json:"rationale"`
-	Confidence      float64   `json:"confidence"`
-	Scope           []string  `json:"scope"`
-	Capabilities    []string  `json:"capabilities"`
-	Provenance      string    `json:"provenance"`
-	BudgetMS        int       `json:"budget_ms"`
-	Signature       string    `json:"signature"`
+	InstructionHash string            `json:"instruction_hash"`
+	PlanHash          string            `json:"plan_hash"`
+	Rationale         string            `json:"rationale"`
+	Confidence        float64           `json:"confidence"`
+	Scope             []string          `json:"scope"`
+	Capabilities      []string          `json:"capabilities"`
+	Provenance        string            `json:"provenance"`
+	BudgetMS          int               `json:"budget_ms"`
+	Signature         string            `json:"signature"`
+	BasedOnHashes     map[string]string `json:"based_on_hashes"`
 }
+
+type VibeState string
+
+const (
+	StateKnown   VibeState = "KNOWN"
+	StateUnknown VibeState = "UNKNOWN"
+	StateInvalid VibeState = "INVALID"
+)
 
 type EventLevel string
 
@@ -106,8 +117,9 @@ type CommitAtomicOpArgs struct {
 }
 
 type MutateArgs struct {
-	IntentID string                 `json:"intent_id"`
-	OpSpec   map[string]interface{} `json:"op_spec"`
+	IntentID       string                 `json:"intent_id"`
+	IdempotencyKey string                 `json:"idempotency_key"`
+	OpSpec         map[string]interface{} `json:"op_spec"`
 }
 
 type SyncAssetAtomicArgs struct {
@@ -170,6 +182,8 @@ type BridgeHeartbeat struct {
 	UnityConnected        bool   `json:"unity_connected"`
 	BlenderConnected       bool   `json:"blender_connected"`
 	LastTickHash          string `json:"last_tick_hash"`
+	ExpectedIntervalMS    int    `json:"expected_interval_ms"`
+	LastSeenMS            int    `json:"last_seen_ms"`
 }
 
 type BridgeHandshakeState struct {
@@ -186,6 +200,7 @@ type BridgeWalState struct {
 	LastCommittedOp   string `json:"last_committed_op"`
 	PendingOps        int    `json:"pending_ops"`
 	RollbackAvailable bool   `json:"rollback_available"`
+	Reversible        bool   `json:"reversible"`
 }
 
 type BridgeTransactionState struct {
@@ -221,4 +236,9 @@ type InvokeSpecialistArgs struct {
 	IntentID     string                 `json:"intent_id"`
 	CurrentHash  string                 `json:"current_hash"`
 	TargetIntent map[string]interface{} `json:"target_intent"`
+}
+
+type EntropyBudget struct {
+	Limit int `json:"limit"`
+	Used  int `json:"used"`
 }

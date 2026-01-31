@@ -23,5 +23,11 @@
 - `HUMAN_ONLY/` is invisible. Never access or reference it.
 - Operational data goes to `.vibesync/`.
 
+## ⚖️ Invariance Refusal Rules
+- **ABORT on UNKNOWN**: Do not "guess" missing scene data. Re-poll if status is `UNKNOWN`.
+- **ABORT on ENTROPY**: Stop all mutations if `entropy_used` hits the limit.
+- **META-INVARIANT**: You are forbidden from "fixing" violations. Escalate only.
+- **DOUBLE WITNESS**: Conclusions require proof from ≥2 independent layers.
+
 ---
 *Copyright (C) 2026 B-A-M-N*

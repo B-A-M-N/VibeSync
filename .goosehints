@@ -6,7 +6,8 @@
 
 ## 🛡️ Resilient Sync Workflow
 1. **Governed Flow**: You MUST follow [**Master Procedural Flow**](metadata/PROCEDURAL_FLOW.md) and [**AI Workflow**](metadata/AI_WORKFLOW.md).
-2. **Discover**: `get_diagnostics` -> Verify cluster health and existing mappings.
+2. **Second-Order Refusal**: Abort on `UNKNOWN` state, `ENTROPY` budget exhaustion, or `SCHEMA` mismatch.
+3. **Discover**: `get_diagnostics` -> Verify cluster health and existing mappings.
 2. **Targeting**: Use UUIDs for precise state and `sem:RoleName` for functional intent.
 3. **Iron Box**: Every mutation MUST be atomic. Use `begin_atomic_operation`.
 4. **Multiplex**: Use `vibe_multiplex` for complex Unity ↔ Blender coordination.

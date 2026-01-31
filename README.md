@@ -1,5 +1,8 @@
 # 🌌 VibeSync: Atomic Unity ↔ Blender Sync
 
+> [!NOTE]
+> **Project Scaffolding:** This repository currently serves as the foundational scaffolding and architectural core. It is intended for full operational use once the accompanying **UnityVibeBridge** and **BlenderVibeBridge** applications are fully finalized.
+
 **VibeSync is a live bridge that synchronizes Blender and Unity scenes automatically, safely, and in real time.**
 
 **Unlike traditional exporters, VibeSync enforces atomic, crash-safe sync across both engines—ensuring your data is never corrupted.**

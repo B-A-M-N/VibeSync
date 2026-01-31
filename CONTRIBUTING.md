@@ -90,7 +90,27 @@ We follow **Conventional Commits**:
 
 
 
+## 🐹 Go Orchestrator Dependencies
+
+The central orchestrator requires the following external packages:
+
+- **Google UUID**: `go get github.com/google/uuid`
+
+- **MCP Go SDK**: `go get github.com/modelcontextprotocol/go-sdk`
+
+
+
+Run `go mod tidy` to ensure all transitive dependencies are resolved.
+
+
+
+---
+
+
+
 ## 🧪 Technical Testing & Development
+
+
 
 
 

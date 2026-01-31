@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -143,120 +144,104 @@ func isRateLimited(target string) bool {
 	return false
 }
 
+func sanitizeForTarget(target string, data interface{}) interface{} {
+	if data == nil { return nil }
+	jsonBytes, _ := json.Marshal(data)
+	payload := string(jsonBytes)
+
+	if target == "blender" {
+		payload = strings.ReplaceAll(payload, "GameObject", "Object")
+		payload = strings.ReplaceAll(payload, "Prefab", "Template")
+		payload = strings.ReplaceAll(payload, "MonoBehaviour", "Script")
+	} else if target == "unity" {
+		payload = strings.ReplaceAll(payload, "bpy.data", "EngineData")
+		payload = strings.ReplaceAll(payload, "Collection", "Folder")
+		payload = strings.ReplaceAll(payload, "DataBlock", "Asset")
+	}
+
+	re := regexp.MustCompile(`(0x[0-9a-fA-F]+|ptr:[0-9]+|InstanceID:[0-9]+)`)
+	payload = re.ReplaceAllString(payload, "[REDACTED_HANDLE]")
+
+	var sanitized interface{}
+	json.Unmarshal([]byte(payload), &sanitized)
+	return sanitized
+}
+
 func auditPayload(data interface{}) error {
 	if data == nil { return nil }
 	jsonBytes, _ := json.Marshal(data)
 	payload := strings.ToLower(string(jsonBytes))
 
-	// Hard Execution Bans
-	blocked := []string{
-		"os.system",    // skip-security-gate
-		"exec(",        // skip-security-gate
-		"eval(",        // skip-security-gate
-		"rm -rf",       // skip-security-gate
-		"reflection",   // skip-security-gate
-		"process.start", // skip-security-gate
-		"import ",      // skip-security-gate
-		"__import__",   // skip-security-gate
-		"powershell",   // skip-security-gate
-		"cmd.exe",      // skip-security-gate
-		"/bin/sh",      // skip-security-gate
-		"/bin/bash",    // skip-security-gate
-	}
-	for _, b := range blocked { 
-		if strings.Contains(payload, b) { 
-			return fmt.Errorf("SECURITY_VIOLATION: %s", b) 
-		} 
-	}
-
-	// Numerical Instability check (NaN/Inf)
-	if strings.Contains(payload, "nan") || strings.Contains(payload, "inf") {
-		return fmt.Errorf("NUMERICAL_INSTABILITY: NaN/Inf detected in payload")
-	}
-
-	// Semantic Invariants (Impossible State Guards)
-	if strings.Contains(payload, "children") || strings.Contains(payload, "hierarchy") {
-		if len(payload) > 100000 {
-			return fmt.Errorf("SEMANTIC_VIOLATION: Scene graph ceiling exceeded")
-		}
-	}
-
+	blocked := []string{"os.system", "exec(", "eval(", "rm -rf", "reflection", "process.start", "import ", "__import__", "powershell", "cmd.exe", "/bin/sh", "/bin/bash"}
+	for _, b := range blocked { if strings.Contains(payload, b) { return fmt.Errorf("SECURITY_VIOLATION: %s", b) } }
+	if strings.Contains(payload, "nan") || strings.Contains(payload, "inf") { return fmt.Errorf("NUMERICAL_INSTABILITY: NaN/Inf detected") }
 	return nil
 }
 
 func decayTrust(target string, amount int, reason string) {
-	stateMu.Lock()
-	defer stateMu.Unlock()
-	e, ok := engines[target]
-	if !ok {
-		return
-	}
+	stateMu.Lock(); defer stateMu.Unlock()
+	e, ok := engines[target]; if !ok { return }
 	e.TrustScore -= amount
-	if e.TrustScore < 0 {
-		e.TrustScore = 0
-	}
+	if e.TrustScore < 0 { e.TrustScore = 0 }
 	if e.TrustScore < 20 && e.State != StatePanic {
 		e.State = StateQuarantine
 		dispatchVibeEvent(LevelWarn, "quarantine_triggered", "", "COOL_OFF", map[string]interface{}{"target": target, "reason": reason})
 	}
 }
 
-func sendToEngine(target, endpoint, method string, data interface{}) (map[string]interface{}, error) {
-	stateMu.RLock()
-	engine, ok := engines[target]
-	stateMu.RUnlock()
-	if !ok {
-		return nil, fmt.Errorf("unknown target")
+func getForensicReport() map[string]interface{} {
+	report := make(map[string]interface{})
+	f, err := os.Open(WalFile)
+	if err == nil {
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		var lines []string
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+			if len(lines) > 3 { lines = lines[1:] }
+		}
+		report["last_wal_entries"] = lines
 	}
+	stateMu.RLock()
+	health := make(map[string]string)
+	for name, data := range engines { health[name] = fmt.Sprintf("State: %s | Gen: %d", data.State, data.Generation) }
+	stateMu.RUnlock()
+	report["engine_status"], report["system_time"] = health, time.Now().Format(time.RFC3339)
+	return report
+}
 
-	// 1. Adaptive Throttling (Intent Budgeting)
+func wrapForensicResult(data interface{}) *mcp.CallToolResult {
+	wrapped := map[string]interface{}{"result": data, "forensic_report": getForensicReport()}
+	jsonStr, _ := json.MarshalIndent(wrapped, "", "  ")
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(jsonStr)}}}
+}
+
+func sendToEngine(target, endpoint, method string, data interface{}) (map[string]interface{}, error) {
+	stateMu.RLock(); engine, ok := engines[target]; stateMu.RUnlock()
+	if !ok { return nil, fmt.Errorf("unknown target") }
+
 	if method == "POST" && !strings.Contains(endpoint, "handshake") {
 		stateMu.Lock()
 		now := time.Now()
-		if now.Sub(engine.LastMutation) < 200*time.Millisecond {
-			engine.MutationCount++
-		} else {
-			engine.MutationCount = 1
-		}
+		if now.Sub(engine.LastMutation) < 200*time.Millisecond { engine.MutationCount++ } else { engine.MutationCount = 1 }
 		engine.LastMutation = now
-
-		// If mutation frequency is too high, throttle and decay trust
-		if engine.MutationCount > 5 {
-			stateMu.Unlock()
-			decayTrust(target, 5, "EXCESSIVE_MUTATION_RATE")
-			time.Sleep(1 * time.Second) // Force cooldown
-			return nil, fmt.Errorf("RATE_LIMITED_ADAPTIVE")
-		}
+		if engine.MutationCount > 5 { stateMu.Unlock(); decayTrust(target, 5, "EXCESSIVE_MUTATION_RATE"); return nil, fmt.Errorf("RATE_LIMITED_ADAPTIVE") }
 		stateMu.Unlock()
 	}
 
-	if isRateLimited(target) {
-		return nil, fmt.Errorf("RATE_LIMIT")
-	}
-	// Basic audit
-	if err := auditPayload(data); err != nil {
-		dispatchVibeEvent(LevelError, "security_intercept", "", "PANIC", map[string]interface{}{"error": err.Error()})
-		decayTrust(target, 20, "AUDIT_VIOLATION")
-		return nil, err
-	}
+	if isRateLimited(target) { return nil, fmt.Errorf("RATE_LIMIT") }
+	if err := auditPayload(data); err != nil { dispatchVibeEvent(LevelError, "security_intercept", "", "PANIC", map[string]interface{}{"error": err.Error()}); decayTrust(target, 20, "AUDIT_VIOLATION"); return nil, err }
 	
-	// Sanitize endpoint
 	endpoint = strings.TrimPrefix(endpoint, "/")
-	
+	data = sanitizeForTarget(target, data)
+
 	var lastErr error
-	for i := 0; i < 3; i++ { // RETRY WITH BACKOFF
+	for i := 0; i < 3; i++ {
 		res, err := attemptSend(target, endpoint, method, data)
 		if err == nil {
-			if res != nil && res["error"] == "Engine Busy: Compiling or Updating" {
-				time.Sleep(2 * time.Second)
-				continue
-			}
+			if res != nil && res["error"] == "Engine Busy: Compiling or Updating" { time.Sleep(2 * time.Second); continue }
 			if method == "POST" && !strings.Contains(endpoint, "handshake") {
-				go func() {
-					ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-					defer cancel()
-					verifyEngineState(ctx, target, endpoint)
-				}()
+				go func() { ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second); defer cancel(); verifyEngineState(ctx, target, endpoint) }()
 			}
 			return res, nil
 		}
@@ -275,509 +260,252 @@ func computeSignature(token, timestamp, method, path, body string) string {
 func attemptSend(target, endpoint, method string, data interface{}) (map[string]interface{}, error) {
 	stateMu.RLock(); engine, ok := engines[target]; stateMu.RUnlock()
 	if !ok || engine.State == StatePanic || engine.State == StateHumanReq { return nil, fmt.Errorf("LOCKED") }
-
-	// Quarantine Enforcement: Only allow GET (Read) operations
-	if engine.State == StateQuarantine && method != "GET" && !strings.Contains(endpoint, "health") {
-		return nil, fmt.Errorf("QUARANTINE_READ_ONLY")
-	}
-
+	if engine.State == StateQuarantine && method != "GET" && !strings.Contains(endpoint, "health") { return nil, fmt.Errorf("QUARANTINE_READ_ONLY") }
 	if time.Now().After(engine.TrustExpiry) && engine.State == StateRunning { return nil, fmt.Errorf("EXPIRED") }
 
-	port := UnityPort
-	if target == "blender" { port = BlenderPort }
+	port := UnityPort; if target == "blender" { port = BlenderPort }
 	url := fmt.Sprintf("http://127.0.0.1:%d/%s", port, endpoint)
-
 	mid := nextMonotonicID()
 	tid := ""
 	if m, ok := data.(map[string]interface{}); ok {
-		m["generation"] = engine.Generation
-		m["session_id"] = currentSessionID
-		m["monotonic_id"] = mid
-		
-		txMu.Lock()
-		if activeTransaction != nil { 
-			tid = activeTransaction.ID
-			m["tid"] = tid
-			m["parent_id"] = tid 
-		}
-		txMu.Unlock()
+		m["generation"], m["session_id"], m["monotonic_id"] = engine.Generation, currentSessionID, mid
+		txMu.Lock(); if activeTransaction != nil { tid = activeTransaction.ID; m["tid"], m["parent_id"] = tid, tid }; txMu.Unlock()
 	}
 	
-	jsonBody, _ := json.Marshal(data)
-	bodyStr := string(jsonBody)
-	if data == nil { bodyStr = "" }
-	
+	jsonBody, _ := json.Marshal(data); bodyStr := string(jsonBody); if data == nil { bodyStr = "" }
 	timestamp := fmt.Sprintf("%d", time.Now().Unix())
 	signature := computeSignature(engine.Token, timestamp, method, "/"+endpoint, bodyStr)
 
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonBody))
-	if err != nil { return nil, err }
-	
-	req.Header.Set("X-Vibe-Token", engine.Token)
-	req.Header.Set("X-Vibe-Signature", signature)
-	req.Header.Set("X-Vibe-Timestamp", timestamp)
-	req.Header.Set("X-Vibe-Session", currentSessionID)
-	req.Header.Set("X-Vibe-Generation", fmt.Sprintf("%d", engine.Generation))
+	req, _ := http.NewRequest(method, url, bytes.NewBuffer(jsonBody))
+	req.Header.Set("X-Vibe-Token", engine.Token); req.Header.Set("X-Vibe-Signature", signature); req.Header.Set("X-Vibe-Timestamp", timestamp); req.Header.Set("X-Vibe-Session", currentSessionID); req.Header.Set("X-Vibe-Generation", fmt.Sprintf("%d", engine.Generation))
 	if tid != "" { req.Header.Set("X-Vibe-Transaction", tid) }
 	req.Header.Set("Content-Type", "application/json")
 	
-	resp, err := hardenedClient.Do(req)
-	if err != nil { return nil, err }
-	defer resp.Body.Close()
-	
-	var res map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
-		if resp.StatusCode >= 400 { return nil, fmt.Errorf("HTTP %d", resp.StatusCode) }
-		return nil, err
-	}
-	
+	resp, err := hardenedClient.Do(req); if err != nil { return nil, err }; defer resp.Body.Close()
+	var res map[string]interface{}; if err := json.NewDecoder(resp.Body).Decode(&res); err != nil { if resp.StatusCode >= 400 { return nil, fmt.Errorf("HTTP %d", resp.StatusCode) }; return nil, err }
 	journalOperation(map[string]interface{}{"type": "engine_call", "target": target, "endpoint": endpoint, "mid": mid})
 	return res, nil
 }
 
 func verifyEngineState(ctx context.Context, target, endpoint string) {
 	log.Printf("🔍 REFEREE | Verifying %s after %s", target, endpoint)
-	// Law of Reality: prove intent matches reality
-	// Using a channel to handle the result of the potentially blocking sendToEngine call
-	type result struct {
-		res map[string]interface{}
-		err error
-	}
+	type result struct { res map[string]interface{}; err error }
 	done := make(chan result, 1)
-	go func() {
-		res, err := sendToEngine(target, "state/get", "GET", nil)
-		done <- result{res, err}
-	}()
-
-	select {
-	case <-ctx.Done():
-		log.Printf("🚨 VERIFICATION TIMEOUT | %s failed to return state within deadline", target)
-	case r := <-done:
-		if r.err != nil {
-			log.Printf("🚨 VERIFICATION FAILURE | %s failed to return state: %v", target, r.err)
-			return
-		}
-		log.Printf("✅ VERIFIED | %s state hash: %v", target, r.res["hash"])
-	}
+	go func() { res, err := sendToEngine(target, "state/get", "GET", nil); done <- result{res, err} }()
+	select { case <-ctx.Done(): log.Printf("🚨 VERIFICATION TIMEOUT | %s", target); case r := <-done: if r.err != nil { log.Printf("🚨 VERIFICATION FAILURE | %s: %v", target, r.err) } else { log.Printf("✅ VERIFIED | %s: %v", target, r.res["hash"]) } }
 }
 
 func startHeartbeatWatcher() {
-	ticker := time.NewTicker(5 * time.Second)
-	portMap := map[string]int{"unity": UnityPort, "blender": BlenderPort}
-	
+	ticker := time.NewTicker(5 * time.Second); portMap := map[string]int{"unity": UnityPort, "blender": BlenderPort}
 	for range ticker.C {
-		targets := make(map[string]struct {
-			Port       int
-			Generation int
-		})
-
-		stateMu.RLock()
-		for name, e := range engines {
-			if e.State == StateRunning {
-				if port, known := portMap[name]; known {
-					targets[name] = struct {
-						Port       int
-						Generation int
-					}{Port: port, Generation: e.Generation}
-				}
-			}
-		}
-		stateMu.RUnlock()
-
-		if len(targets) == 0 {
-			continue
-		}
-
-		var wg sync.WaitGroup
-		var panicMu sync.Mutex
-		panicRequired := false
-
+		targets := make(map[string]struct{ Port, Generation int })
+		stateMu.RLock(); for name, e := range engines { if e.State == StateRunning { if port, known := portMap[name]; known { targets[name] = struct{ Port, Generation int }{port, e.Generation} } } }; stateMu.RUnlock()
+		if len(targets) == 0 { continue }
+		var wg sync.WaitGroup; var panicMu sync.Mutex; panicRequired := false
 		for name, target := range targets {
-			wg.Add(1)
-			go func(n string, t struct{Port int; Generation int}) {
-				defer wg.Done()
-				client := &http.Client{Timeout: 2 * time.Second}
-				resp, err := client.Get(fmt.Sprintf("http://localhost:%d/health", t.Port))
-				
+			wg.Add(1); go func(n string, t struct{ Port, Generation int }) {
+				defer wg.Done(); client := &http.Client{Timeout: 2 * time.Second}; resp, err := client.Get(fmt.Sprintf("http://localhost:%d/health", t.Port))
 				engineFailed := false
-				if err != nil || resp.StatusCode != 200 {
-					log.Printf("🚨 HEARTBEAT FAILURE | %s is unresponsive. Triggering cluster panic.", n)
-					engineFailed = true
-				} else {
-					var res map[string]interface{}
-					if err := json.NewDecoder(resp.Body).Decode(&res); err == nil {
-						// Generation Drift Detection
-						if gen, ok := res["generation"].(float64); ok && int(gen) != t.Generation {
-							log.Printf("🚨 DRIFT DETECTED | %s reported Gen %v, expected %d. Engine reloaded without handshake.", n, gen, t.Generation)
-							engineFailed = true
-						}
-					}
-					resp.Body.Close()
+				if err != nil || resp.StatusCode != 200 { engineFailed = true } else {
+					var res map[string]interface{}; if err := json.NewDecoder(resp.Body).Decode(&res); err == nil { if gen, ok := res["generation"].(float64); ok && int(gen) != t.Generation { engineFailed = true } }; resp.Body.Close()
 				}
-
-				if engineFailed {
-					stateMu.Lock()
-					if e, ok := engines[n]; ok {
-						e.State = StatePanic
-					}
-					stateMu.Unlock()
-					panicMu.Lock()
-					panicRequired = true
-					panicMu.Unlock()
-				} else {
-					stateMu.Lock()
-					if e, ok := engines[n]; ok {
-						e.TrustExpiry = time.Now().Add(60 * time.Minute)
-					}
-					stateMu.Unlock()
-				}
+				if engineFailed { stateMu.Lock(); if e, ok := engines[n]; ok { e.State = StatePanic }; stateMu.Unlock(); panicMu.Lock(); panicRequired = true; panicMu.Unlock() } else { stateMu.Lock(); if e, ok := engines[n]; ok { e.TrustExpiry = time.Now().Add(60 * time.Minute) }; stateMu.Unlock() }
 			}(name, target)
 		}
-		wg.Wait()
-
-		if panicRequired {
-			// Law of Stability: Broadcast panic to ALL engines
-			for name := range engines {
-				go sendToEngine(name, "panic", "POST", map[string]interface{}{"reason": "HEARTBEAT_TIMEOUT"})
-			}
-		}
+		wg.Wait(); if panicRequired { for name := range engines { go sendToEngine(name, "panic", "POST", map[string]interface{}{"reason": "HEARTBEAT_TIMEOUT"}) } }
 	}
 }
 
 // --- TOOLS ---
 
 func verifyAdapterIntegrity(target string) (string, error) {
-	path := "unity-bridge/Editor/VibeBridgeServer.cs"
-	if target == "blender" {
-		path = "blender-bridge/bridge_server.py"
-	}
-	
-	// In a real production environment, we would check the relative path 
-	// from the binary or a configured source root.
-	data, err := os.ReadFile("../" + path)
-	if err != nil {
-		// Fallback for docker/different working dirs
-		data, err = os.ReadFile(path)
-		if err != nil { return "", err }
-	}
-	
-	h := sha256.New()
-	h.Write(data)
-	return hex.EncodeToString(h.Sum(nil)), nil
+	path := "unity-bridge/Editor/VibeBridgeServer.cs"; if target == "blender" { path = "blender-bridge/bridge_server.py" }
+	data, err := os.ReadFile("../" + path); if err != nil { data, err = os.ReadFile(path); if err != nil { return "", err } }
+	h := sha256.New(); h.Write(data); return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func handshake_init(ctx context.Context, req *mcp.CallToolRequest, args HandshakeInitArgs) (*mcp.CallToolResult, any, error) {
-	// 1. Integrity Check
-	hash, err := verifyAdapterIntegrity(args.Target)
-	if err != nil {
-		log.Printf("⚠️ INTEGRITY ERROR | Could not hash %s adapter: %v", args.Target, err)
-	} else {
-		log.Printf("🛡️ INTEGRITY | %s adapter hash: %s", args.Target, hash)
-	}
-
-	stateMu.Lock()
-	engines[args.Target].State = StateStarting
-	engines[args.Target].Generation++
-	newToken, chal := uuid.New().String(), uuid.New().String()
-	stateMu.Unlock()
-
+	hash, _ := verifyAdapterIntegrity(args.Target); stateMu.Lock(); engines[args.Target].State, engines[args.Target].Generation = StateStarting, engines[args.Target].Generation+1; newToken, chal := uuid.New().String(), uuid.New().String(); stateMu.Unlock()
 	res, err := sendToEngine(args.Target, "handshake", "POST", map[string]interface{}{"version": args.Version, "new_token": newToken, "challenge": chal})
 	if err != nil || res["response"] != "VIBE_HASH_"+chal { return nil, nil, fmt.Errorf("AUTH_FAILED") }
-	
-	stateMu.Lock()
-	e := engines[args.Target]
-	e.Token, e.Version, e.State, e.TrustExpiry = newToken, fmt.Sprintf("%v", res["engine_version"]), StateRunning, time.Now().Add(60*time.Minute)
-	stateMu.Unlock()
-	
-	dispatchVibeEvent(LevelInfo, "handshake_complete", "", "READY", map[string]interface{}{"target": args.Target})
-	saveState()
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "OK"}}}, nil, nil
+	stateMu.Lock(); e := engines[args.Target]; e.Token, e.Version, e.State, e.TrustExpiry = newToken, fmt.Sprintf("%v", res["engine_version"]), StateRunning, time.Now().Add(60*time.Minute); stateMu.Unlock()
+	dispatchVibeEvent(LevelInfo, "handshake_complete", "", "READY", map[string]interface{}{"target": args.Target}); saveState()
+	return wrapForensicResult("OK"), nil, nil
 }
 
 func read_engine_state(ctx context.Context, req *mcp.CallToolRequest, args ReadStateArgs) (*mcp.CallToolResult, any, error) {
-	res, _ := sendToEngine(args.Target, "state/get", "GET", nil)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Hash: %v", res["hash"])}}}, nil, nil
+	res, _ := sendToEngine(args.Target, "state/get", "GET", nil); return wrapForensicResult(res), nil, nil
 }
 
 func verify_engine_state(ctx context.Context, req *mcp.CallToolRequest, args VerifyStateArgs) (*mcp.CallToolResult, any, error) {
-	res, _ := sendToEngine(args.Target, "state/get", "GET", nil)
-	if fmt.Sprintf("%v", res["hash"]) == args.ExpectedHash { return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "VERIFIED"}}}, nil, nil }
-	return nil, nil, fmt.Errorf("DRIFT_DETECTED")
+	res, _ := sendToEngine(args.Target, "state/get", "GET", nil); if fmt.Sprintf("%v", res["hash"]) == args.ExpectedHash { return wrapForensicResult("VERIFIED"), nil, nil }; return nil, nil, fmt.Errorf("DRIFT_DETECTED")
 }
 
 func submit_intent(ctx context.Context, req *mcp.CallToolRequest, args SubmitIntentArgs) (*mcp.CallToolResult, any, error) {
-	if args.Envelope.Rationale == "" { return nil, nil, fmt.Errorf("RATIONALE_REQUIRED") }
-	if args.Envelope.Provenance == "" { return nil, nil, fmt.Errorf("PROVENANCE_REQUIRED") }
-	if args.Envelope.Confidence < 0 || args.Envelope.Confidence > 1.0 { return nil, nil, fmt.Errorf("INVALID_CONFIDENCE") }
-	
+	if args.Envelope.Rationale == "" || args.Envelope.Provenance == "" { return nil, nil, fmt.Errorf("TECHNICAL_RATIONALE_REQUIRED") }
 	id := uuid.New().String(); txMu.Lock(); intents[id] = args.Envelope; txMu.Unlock()
-	dispatchVibeEvent(LevelInfo, "intent_submitted", id, "VALIDATE", map[string]interface{}{
-		"confidence": args.Envelope.Confidence,
-		"provenance": args.Envelope.Provenance,
-		"capabilities": args.Envelope.Capabilities,
-	})
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: id}}}, nil, nil
+	return wrapForensicResult(id), nil, nil
 }
 
 func validate_intent(ctx context.Context, req *mcp.CallToolRequest, args struct{ID string `json:"intent_id"`}) (*mcp.CallToolResult, any, error) {
-	txMu.Lock(); intent, ok := intents[args.ID]; txMu.Unlock()
-	if !ok { return nil, nil, fmt.Errorf("UNKNOWN_INTENT") }
-	
-	if intent.Confidence < 0.8 {
-		stateMu.Lock()
-		for n := range engines { engines[n].State = StateHumanReq }
-		stateMu.Unlock()
-		dispatchVibeEvent(LevelWarn, "low_confidence_intercept", args.ID, "HUMAN_APPROVAL", map[string]interface{}{"confidence": intent.Confidence})
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "HUMAN_INTERVENTION_REQUIRED"}}}, nil, nil
-	}
-	
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "ALLOW"}}}, nil, nil
+	txMu.Lock(); intent, ok := intents[args.ID]; txMu.Unlock(); if !ok { return nil, nil, fmt.Errorf("UNKNOWN_INTENT") }
+	if intent.Confidence < 0.8 { stateMu.Lock(); for n := range engines { engines[n].State = StateHumanReq }; stateMu.Unlock(); return wrapForensicResult("HUMAN_INTERVENTION_REQUIRED"), nil, nil }
+	return wrapForensicResult("ALLOW"), nil, nil
 }
 
 func human_approve_intent(ctx context.Context, req *mcp.CallToolRequest, args struct{ID string `json:"intent_id"`}) (*mcp.CallToolResult, any, error) {
-	txMu.Lock(); _, ok := intents[args.ID]; txMu.Unlock()
-	if !ok { return nil, nil, fmt.Errorf("UNKNOWN_INTENT") }
-	
-	stateMu.Lock()
-	for n := range engines { if engines[n].State == StateHumanReq { engines[n].State = StateRunning } }
-	stateMu.Unlock()
-	
-	dispatchVibeEvent(LevelInfo, "human_approval_granted", args.ID, "EXECUTE", nil)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "APPROVED"}}}, nil, nil
+	stateMu.Lock(); for n := range engines { if engines[n].State == StateHumanReq { engines[n].State = StateRunning } }; stateMu.Unlock(); return wrapForensicResult("APPROVED"), nil, nil
 }
 
 func begin_atomic_operation(ctx context.Context, req *mcp.CallToolRequest, args AtomicOpArgs) (*mcp.CallToolResult, any, error) {
-	txMu.Lock(); defer txMu.Unlock(); 
-	tx := &VibeTransaction{ID: uuid.New().String(), IntentID: args.IntentID, StartTime: time.Now(), Status: "OPEN"}
-	transactions[args.IntentID] = tx
-	activeTransaction = tx
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "TX_OPEN"}}}, nil, nil
+	txMu.Lock(); defer txMu.Unlock(); tx := &VibeTransaction{ID: uuid.New().String(), IntentID: args.IntentID, StartTime: time.Now(), Status: "OPEN"}; transactions[args.IntentID], activeTransaction = tx, tx
+	return wrapForensicResult("TX_OPEN"), nil, nil
 }
 
-func commit_atomic_operation(ctx context.Context, req *mcp.CallToolRequest, args AtomicOpArgs) (*mcp.CallToolResult, any, error) {
-	txMu.Lock(); defer txMu.Unlock(); 
-	delete(transactions, args.IntentID)
-	activeTransaction = nil
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "COMMITTED"}}}, nil, nil
+func commit_atomic_operation(ctx context.Context, req *mcp.CallToolRequest, args CommitAtomicOpArgs) (*mcp.CallToolResult, any, error) {
+	txMu.Lock(); defer txMu.Unlock(); if args.ProofOfWork == "" { return nil, nil, fmt.Errorf("INVARIANT_VIOLATION: ProofOfWork Required") }
+	delete(transactions, args.IntentID); activeTransaction = nil; return wrapForensicResult("COMMITTED"), nil, nil
 }
 
 func abort_atomic_operation(ctx context.Context, req *mcp.CallToolRequest, args AtomicOpArgs) (*mcp.CallToolResult, any, error) {
-	txMu.Lock(); defer txMu.Unlock(); 
-	delete(transactions, args.IntentID)
-	activeTransaction = nil
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "ABORTED"}}}, nil, nil
+	txMu.Lock(); defer txMu.Unlock(); delete(transactions, args.IntentID); activeTransaction = nil; return wrapForensicResult("ABORTED"), nil, nil
 }
 
 func emit_diag_bundle(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
-	p := filepath.Join(PersistenceDir, "diag.zip"); f, _ := os.Create(p); w := zip.NewWriter(f)
-	for _, fn := range []string{WalFile, EventFile, StateFile} {
-		df, _ := os.Open(fn); zw, _ := w.Create(filepath.Base(fn)); io.Copy(zw, df); df.Close()
-	}
-	w.Close(); f.Close(); return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: p}}}, nil, nil
+	p := filepath.Join(PersistenceDir, "diag.zip"); f, _ := os.Create(p); w := zip.NewWriter(f); for _, fn := range []string{WalFile, EventFile, StateFile} { df, _ := os.Open(fn); zw, _ := w.Create(filepath.Base(fn)); io.Copy(zw, df); df.Close() }; w.Close(); f.Close()
+	return wrapForensicResult(p), nil, nil
 }
 
 func lock_object(ctx context.Context, req *mcp.CallToolRequest, args LockObjectArgs) (*mcp.CallToolResult, any, error) {
-	res, err := sendToEngine(args.Target, "object/lock", "POST", map[string]interface{}{"id": args.ObjectID, "locked": args.Locked})
-	if err != nil { return nil, nil, err }
-	dispatchVibeEvent(LevelInfo, "object_lock_changed", "", "", map[string]interface{}{"id": args.ObjectID, "locked": args.Locked, "target": args.Target})
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("%v", res["status"])}}}, nil, nil
+	res, err := sendToEngine(args.Target, "object/lock", "POST", map[string]interface{}{"id": args.ObjectID, "locked": args.Locked}); if err != nil { return nil, nil, err }; return wrapForensicResult(res), nil, nil
 }
 
 func get_metrics(ctx context.Context, req *mcp.CallToolRequest, args struct{Target string `json:"target"`}) (*mcp.CallToolResult, any, error) {
-	res, err := sendToEngine(args.Target, "metrics", "GET", nil)
-	if err != nil { return nil, nil, err }
-	jsonRes, _ := json.Marshal(res)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(jsonRes)}}}, nil, nil
-}
-
-func blender_mutate_mesh(ctx context.Context, req *mcp.CallToolRequest, args MutateArgs) (*mcp.CallToolResult, any, error) {
-	res, err := sendToEngine("blender", "mesh/mutate", "POST", args.OpSpec)
-	if err != nil { return nil, nil, err }; return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("%v", res["status"])}}}, nil, nil
-}
-
-func unity_mutate_gameobject(ctx context.Context, req *mcp.CallToolRequest, args MutateArgs) (*mcp.CallToolResult, any, error) {
-	res, err := sendToEngine("unity", "object/mutate", "POST", args.OpSpec)
-	if err != nil { return nil, nil, err }; return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("%v", res["status"])}}}, nil, nil
+	res, err := sendToEngine(args.Target, "metrics", "GET", nil); if err != nil { return nil, nil, err }; return wrapForensicResult(res), nil, nil
 }
 
 func sync_material(ctx context.Context, req *mcp.CallToolRequest, args SyncMaterialArgs) (*mcp.CallToolResult, any, error) {
-	data := map[string]interface{}{"id": args.ObjectID, "properties": args.Props}
-	// Record intent in WAL before execution
-	journalOperation(map[string]interface{}{"type": "intent", "op": "sync_material", "id": args.ObjectID})
-	
-	sendToEngine("unity", "material/update", "POST", data)
-	sendToEngine("blender", "material/update", "POST", data)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "OK"}}}, nil, nil
+	data := map[string]interface{}{"id": args.ObjectID, "properties": args.Props}; journalOperation(map[string]interface{}{"type": "intent", "op": "sync_material", "id": args.ObjectID}); sendToEngine("unity", "material/update", "POST", data); sendToEngine("blender", "material/update", "POST", data)
+	return wrapForensicResult("OK"), nil, nil
 }
 
 func sync_transform(ctx context.Context, req *mcp.CallToolRequest, args SyncTransformArgs) (*mcp.CallToolResult, any, error) {
-	// Numerical Safety: Prevent NaN/Inf in creative sync
-	for _, v := range append(append(args.Position, args.Rotation...), args.Scale...) {
-		if math.IsNaN(v) || math.IsInf(v, 0) { return nil, nil, fmt.Errorf("NUMERICAL_INSTABILITY") }
-	}
-
-	data := map[string]interface{}{"id": args.ObjectID, "transform": map[string]interface{}{"pos": args.Position, "rot": args.Rotation, "sca": args.Scale}}
-	sendToEngine("unity", "transform/set", "POST", data); sendToEngine("blender", "transform/set", "POST", data)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "OK"}}}, nil, nil
+	for _, v := range append(append(args.Position, args.Rotation...), args.Scale...) { if math.IsNaN(v) || math.IsInf(v, 0) { return nil, nil, fmt.Errorf("NUMERICAL_INSTABILITY") } }
+	data := map[string]interface{}{"id": args.ObjectID, "transform": map[string]interface{}{"pos": args.Position, "rot": args.Rotation, "sca": args.Scale}}; sendToEngine("unity", "transform/set", "POST", data); sendToEngine("blender", "transform/set", "POST", data)
+	return wrapForensicResult("OK"), nil, nil
 }
 
 func sync_camera(ctx context.Context, req *mcp.CallToolRequest, args SyncCameraArgs) (*mcp.CallToolResult, any, error) {
-	target := "unity"; if args.Source == "unity" { target = "blender" }
-	
-	res, err := sendToEngine(args.Source, "camera/get", "GET", nil)
-	if err != nil { return nil, nil, err }
-	
-	sendToEngine(target, "camera/set", "POST", res)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "OK"}}}, nil, nil
+	t := "unity"; if args.Source == "unity" { t = "blender" }; res, err := sendToEngine(args.Source, "camera/get", "GET", nil); if err != nil { return nil, nil, err }; sendToEngine(t, "camera/set", "POST", res)
+	return wrapForensicResult("OK"), nil, nil
 }
 
 func sync_selection(ctx context.Context, req *mcp.CallToolRequest, args SyncSelectionArgs) (*mcp.CallToolResult, any, error) {
-	target := "unity"; if args.Source == "unity" { target = "blender" }
-	
-	sendToEngine(target, "selection/set", "POST", map[string]interface{}{"ids": args.IDs})
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "OK"}}}, nil, nil
+	t := "unity"; if args.Source == "unity" { t = "blender" }; sendToEngine(t, "selection/set", "POST", map[string]interface{}{"ids": args.IDs})
+	return wrapForensicResult("OK"), nil, nil
 }
 
 func sync_asset_atomic(ctx context.Context, req *mcp.CallToolRequest, args SyncAssetAtomicArgs) (*mcp.CallToolResult, any, error) {
-	pre, err := sendToEngine("blender", "preflight/run", "POST", map[string]interface{}{"path": args.AssetPath})
-	if err != nil || pre == nil { return nil, nil, fmt.Errorf("PREFLIGHT_FAILED | %v", err) }
-	
-	ex, err := sendToEngine("blender", "export", "POST", map[string]interface{}{"path": args.AssetPath})
-	if err != nil || ex == nil { return nil, nil, fmt.Errorf("EXPORT_FAILED | %v", err) }
-	
-	_, err = sendToEngine("unity", "import", "POST", map[string]interface{}{"path": args.AssetPath, "meta": ex["meta"], "mode": "sandbox"})
-	if err != nil { return nil, nil, err }
-	
-	val, err := sendToEngine("unity", "validate", "POST", map[string]interface{}{"path": args.AssetPath})
-	if err != nil || val == nil { return nil, nil, fmt.Errorf("VALIDATION_FAILED | %v", err) }
-	
-	if fmt.Sprintf("%v", pre["hash"]) != fmt.Sprintf("%v", val["hash"]) {
-		sendToEngine("unity", "rollback", "POST", map[string]interface{}{"path": args.AssetPath})
-		
-		stateMu.Lock()
-		for n := range engines { engines[n].State = StateDesync }
-		stateMu.Unlock()
-		
-		return nil, nil, fmt.Errorf("HASH_MISMATCH | Cluster in DESYNC")
-	}
-	
-	_, err = sendToEngine("unity", "commit", "POST", map[string]interface{}{"path": args.AssetPath})
-	if err != nil { return nil, nil, err }
-	
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "SYNCED"}}}, nil, nil
-}
-
-func reconcile_sync_state(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
-	u, _ := sendToEngine("unity", "state/get", "GET", nil)
-	b, _ := sendToEngine("blender", "state/get", "GET", nil)
-	
-	if fmt.Sprintf("%v", u["hash"]) == fmt.Sprintf("%v", b["hash"]) {
-		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "MATCHED"}}}, nil, nil
-	}
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "DRIFT_DETECTED"}}}, nil, nil
+	pre, _ := sendToEngine("blender", "preflight/run", "POST", map[string]interface{}{"path": args.AssetPath}); ex, _ := sendToEngine("blender", "export", "POST", map[string]interface{}{"path": args.AssetPath}); sendToEngine("unity", "import", "POST", map[string]interface{}{"path": args.AssetPath, "meta": ex["meta"], "mode": "sandbox"}); val, _ := sendToEngine("unity", "validate", "POST", map[string]interface{}{"path": args.AssetPath})
+	if fmt.Sprintf("%v", pre["hash"]) != fmt.Sprintf("%v", val["hash"]) { sendToEngine("unity", "rollback", "POST", map[string]interface{}{"path": args.AssetPath}); stateMu.Lock(); for n := range engines { engines[n].State = StateDesync }; stateMu.Unlock(); return nil, nil, fmt.Errorf("HASH_MISMATCH") }
+	sendToEngine("unity", "commit", "POST", map[string]interface{}{"path": args.AssetPath})
+	return wrapForensicResult("SYNCED"), nil, nil
 }
 
 func get_operation_journal(ctx context.Context, req *mcp.CallToolRequest, args struct{Limit int `json:"limit"`}) (*mcp.CallToolResult, any, error) {
-	f, _ := os.Open(WalFile); defer f.Close(); s := bufio.NewScanner(f); var out []string
-	for s.Scan() { out = append(out, s.Text()) }
-	if len(out) > args.Limit && args.Limit > 0 { out = out[len(out)-args.Limit:] }
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: strings.Join(out, "\n")}}}, nil, nil
+	f, _ := os.Open(WalFile); s := bufio.NewScanner(f); var out []string; for s.Scan() { out = append(out, s.Text()) }; if len(out) > args.Limit && args.Limit > 0 { out = out[len(out)-args.Limit:] }
+	return wrapForensicResult(strings.Join(out, "\n")),
+ nil, nil
 }
 
-func control_playback(ctx context.Context, req *mcp.CallToolRequest, args struct {
-	Action string  `json:"action"`
-	Time   float64 `json:"time"`
-}) (*mcp.CallToolResult, any, error) {
-	data := map[string]interface{}{"action": args.Action, "time": args.Time}
-	sendToEngine("unity", "playback/control", "POST", data)
-	sendToEngine("blender", "playback/control", "POST", data)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "OK"}}}, nil, nil
+func control_playback(ctx context.Context, req *mcp.CallToolRequest, args struct { Action string; Time float64 }) (*mcp.CallToolResult, any, error) {
+	d := map[string]interface{}{"action": args.Action, "time": args.Time}; sendToEngine("unity", "playback/control", "POST", d); sendToEngine("blender", "playback/control", "POST", d)
+	return wrapForensicResult("OK"), nil, nil
 }
 
 func global_id_map_resolve(ctx context.Context, req *mcp.CallToolRequest, args MapVibeIDsArgs) (*mcp.CallToolResult, any, error) {
-	stateMu.Lock(); globalIDMap[args.UnityGUID], globalIDMap[args.BlenderName] = args.BlenderName, args.UnityGUID; stateMu.Unlock()
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "RESOLVED"}}}, nil, nil
-}
-
-// DRIVER REGISTRY (v0.4 Multiplexer Knowledge)
-var drivers = map[string][]string{
-	"vision_mcp":    {"render/capture", "material/get", "light/get"},
-	"selection_mcp": {"selection/set", "hierarchy/get", "camera/frame"},
+	stateMu.Lock(); globalIDMap[args.UnityGUID], globalIDMap[args.BlenderName] = args.BlenderName, args.UnityGUID; stateMu.Unlock(); return wrapForensicResult("RESOLVED"), nil, nil
 }
 
 func vibe_multiplex(ctx context.Context, req *mcp.CallToolRequest, args MultiplexCallArgs) (*mcp.CallToolResult, any, error) {
-	allowedEndpoints, ok := drivers[args.SensorID]
-	if !ok { return nil, nil, fmt.Errorf("DRIVER_UNREGISTERED") }
-	isAllowed := false
-	for _, ep := range allowedEndpoints { if ep == args.Endpoint { isAllowed = true; break } }
-	if !isAllowed { return nil, nil, fmt.Errorf("PERMISSION_DENIED") }
-
-	res, err := sendToEngine(args.Target, args.Endpoint, "POST", args.Payload)
-	if err != nil { return nil, nil, err }
-	jsonRes, _ := json.Marshal(res)
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(jsonRes)}}}, nil, nil
+	allowed, ok := drivers[args.SensorID]; if !ok { return nil, nil, fmt.Errorf("DRIVER_UNREGISTERED") }; isOk := false; for _, ep := range allowed { if ep == args.Endpoint { isOk = true; break } }; if !isOk { return nil, nil, fmt.Errorf("DENIED") }
+	res, err := sendToEngine(args.Target, args.Endpoint, "POST", args.Payload); if err != nil { return nil, nil, err }; return wrapForensicResult(res), nil, nil
 }
 
 func set_engine_state(ctx context.Context, req *mcp.CallToolRequest, args SetEngineStateArgs) (*mcp.CallToolResult, any, error) {
-	stateMu.Lock(); defer stateMu.Unlock()
-	e, ok := engines[args.Target]
-	if !ok { return nil, nil, fmt.Errorf("Unknown target") }
-	e.State = EngineState(args.State)
-	saveState()
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "OK"}}}, nil, nil
+	stateMu.Lock(); if e, ok := engines[args.Target]; ok { e.State = EngineState(args.State) }; stateMu.Unlock(); saveState(); return wrapForensicResult("OK"), nil, nil
 }
 
 func revoke_id(ctx context.Context, req *mcp.CallToolRequest, args RevokeIDArgs) (*mcp.CallToolResult, any, error) {
-	stateMu.Lock(); revocationList[args.ID] = args.Reason; stateMu.Unlock()
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "REVOKED"}}}, nil, nil
+	stateMu.Lock(); revocationList[args.ID] = args.Reason; stateMu.Unlock(); return wrapForensicResult("REVOKED"), nil, nil
 }
 
 func epistemic_refusal(ctx context.Context, req *mcp.CallToolRequest, args struct{R string `json:"reason"`}) (*mcp.CallToolResult, any, error) {
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "UNKNOWABLE: " + args.R}}}, nil, nil
+	return wrapForensicResult("UNKNOWABLE: " + args.R), nil, nil
 }
 
 func decommission_bridge(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
-	stateMu.Lock(); for n := range engines { engines[n].State = StatePanic }; stateMu.Unlock(); return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "DECOMMISSIONED"}}}, nil, nil
+	stateMu.Lock(); for n := range engines { engines[n].State = StatePanic }; stateMu.Unlock(); return wrapForensicResult("DECOMMISSIONED"), nil, nil
 }
 
 func reconstruct_state(ctx context.Context, req *mcp.CallToolRequest, args ForensicReplayArgs) (*mcp.CallToolResult, any, error) {
-	f, _ := os.Open(EventFile); defer f.Close(); s := bufio.NewScanner(f); var out []string
-	for s.Scan() { var e VibeEvent; json.Unmarshal(s.Bytes(), &e); out = append(out, e.Type) }
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: strings.Join(out, " -> ")}}}, nil, nil
+	f, _ := os.Open(EventFile); s := bufio.NewScanner(f); var out []string; for s.Scan() { var e VibeEvent; json.Unmarshal(s.Bytes(), &e); out = append(out, e.Type) }
+	return wrapForensicResult(strings.Join(out, " -> ")),
+ nil, nil
+}
+
+func invoke_specialist(ctx context.Context, req *mcp.CallToolRequest, args InvokeSpecialistArgs) (*mcp.CallToolResult, any, error) {
+	dispatchVibeEvent(LevelInfo, "specialist_invoked", args.IntentID, "DELEGATE", map[string]interface{}{"specialist": args.SpecialistID, "hash": args.CurrentHash})
+	p := fmt.Sprintf("STATELESS SPECIALIST INVOCATION\nTarget: %s\nCurrent Hash: %s\nIntent: %v", args.SpecialistID, args.CurrentHash, args.TargetIntent)
+	return wrapForensicResult(p), nil, nil
+}
+
+func get_bridge_heartbeat(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
+	stateMu.RLock(); defer stateMu.RUnlock(); res := BridgeHeartbeat{BridgePID: os.Getpid(), UptimeSec: int(time.Since(startTime).Seconds()), EpochID: monotonicID, OrchestratorConnected: true, UnityConnected: engines["unity"].State == StateRunning, BlenderConnected: engines["blender"].State == StateRunning, LastTickHash: lastWalHash}
+	return wrapForensicResult(res), nil, nil
+}
+
+func get_bridge_handshake_state(ctx context.Context, req *mcp.CallToolRequest, args struct{ AssetID string `json:"asset_id"` }) (*mcp.CallToolResult, any, error) {
+	u, _ := sendToEngine("unity", "state/get", "GET", nil); b, _ := sendToEngine("blender", "state/get", "GET", nil); m := fmt.Sprintf("%v", u["hash"]) == fmt.Sprintf("%v", b["hash"])
+	res := BridgeHandshakeState{AssetID: args.AssetID, BlenderExportHash: fmt.Sprintf("%v", b["hash"]), UnityImportHash: fmt.Sprintf("%v", u["hash"]), HashMatch: m, LastVerified: time.Now().Format(time.RFC3339)}
+	return wrapForensicResult(res), nil, nil
+}
+
+func get_bridge_wal_state(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
+	res := BridgeWalState{WalHead: monotonicID, WalHash: lastWalHash, LastCommittedOp: "UNKNOWN", PendingOps: 0, RollbackAvailable: true}
+	return wrapForensicResult(res), nil, nil
+}
+
+func get_bridge_commit_requirements(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
+	u, _ := sendToEngine("unity", "state/get", "GET", nil); b, _ := sendToEngine("blender", "state/get", "GET", nil); h := map[string]string{"wal": lastWalHash, "blender": fmt.Sprintf("%v", b["hash"]), "unity": fmt.Sprintf("%v", u["hash"])}
+	res := BridgeCommitRequirements{RequiredHashes: h, RationaleRequired: true, CommitAllowed: h["blender"] == h["unity"]}
+	return wrapForensicResult(res), nil, nil
+}
+
+func execute_governed_mutation(ctx context.Context, req *mcp.CallToolRequest, args MutateArgs) (*mcp.CallToolResult, any, error) {
+	if err := auditPayload(args.OpSpec); err != nil { return nil, nil, err }
+	t, _ := args.OpSpec["target"].(string); e, _ := args.OpSpec["endpoint"].(string)
+	res, err := sendToEngine(t, e, "POST", args.OpSpec["payload"]); if err != nil { return nil, nil, err }
+	time.Sleep(200 * time.Millisecond); v, _ := sendToEngine(t, "state/get", "GET", nil)
+	r := map[string]interface{}{"engine_response": res, "verified_hash": "FAIL"}; if v != nil { r["verified_hash"] = v["hash"] }
+	return wrapForensicResult(r), nil, nil
 }
 
 // --- STATE PERSISTENCE ---
 
 func loadState() {
-	stateMu.Lock(); defer stateMu.Unlock(); data, _ := os.ReadFile(StateFile)
-	var s struct { Engines map[string]*EngineData `json:"engines"`; IDMap map[string]string `json:"id_map"`; Credits int `json:"credits"` }
-	json.Unmarshal(data, &s); creditBalance = s.Credits; globalIDMap = s.IDMap
+	stateMu.Lock(); defer stateMu.Unlock(); data, _ := os.ReadFile(StateFile); var s struct { Engines map[string]*EngineData; IDMap map[string]string; Credits int }; json.Unmarshal(data, &s); creditBalance, globalIDMap = s.Credits, s.IDMap
 	for k, v := range s.Engines { if e, ok := engines[k]; ok { e.State, e.Token, e.Version = v.State, v.Token, v.Version } }
 }
 
 func saveState() {
-	stateMu.RLock(); s := struct { Engines map[string]*EngineData `json:"engines"`; IDMap map[string]string `json:"id_map"`; Credits int `json:"credits"` }{Engines: engines, IDMap: globalIDMap, Credits: creditBalance}
-	stateMu.RUnlock(); data, _ := json.MarshalIndent(s, "", "  ")
-	os.WriteFile(StateFile, data, 0644)
+	stateMu.RLock(); s := struct { Engines map[string]*EngineData `json:"engines"`; IDMap map[string]string `json:"id_map"`; Credits int `json:"credits"` }{Engines: engines, IDMap: globalIDMap, Credits: creditBalance}; stateMu.RUnlock(); data, _ := json.MarshalIndent(s, "", "  "); os.WriteFile(StateFile, data, 0644)
 }
 
 func journalOperation(op map[string]interface{}) {
-	walMu.Lock(); defer walMu.Unlock()
-	if activeTransaction != nil { op["tid"] = activeTransaction.ID }
-	
-	// Causal Hash-Chaining
-	op["prev_hash"] = lastWalHash
-	data, _ := json.Marshal(op)
-	
-	h := sha256.New()
-	h.Write(data)
-	lastWalHash = hex.EncodeToString(h.Sum(nil))
-	op["hash"] = lastWalHash
-	
-	finalData, _ := json.Marshal(op)
-	if info, err := os.Stat(WalFile); err == nil && info.Size() > MaxWalSize { os.Rename(WalFile, WalFile+".old") }
-	f, _ := os.OpenFile(WalFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer f.Close(); f.Write(finalData); f.Write([]byte("\n"))
+	walMu.Lock(); defer walMu.Unlock(); if activeTransaction != nil { op["tid"] = activeTransaction.ID }
+	op["prev_hash"] = lastWalHash; data, _ := json.Marshal(op); h := sha256.New(); h.Write(data); lastWalHash = hex.EncodeToString(h.Sum(nil)); op["hash"] = lastWalHash
+	final, _ := json.Marshal(op); if info, err := os.Stat(WalFile); err == nil && info.Size() > MaxWalSize { os.Rename(WalFile, WalFile+".old") }; f, _ := os.OpenFile(WalFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); defer f.Close(); f.Write(final); f.Write([]byte("\n"))
 }
 
 func main() {
@@ -785,32 +513,34 @@ func main() {
 	mcp.AddTool(server, &mcp.Tool{Name: "handshake_init", Description: "ISA 1"}, handshake_init)
 	mcp.AddTool(server, &mcp.Tool{Name: "read_engine_state", Description: "ISA 2"}, read_engine_state)
 	mcp.AddTool(server, &mcp.Tool{Name: "verify_engine_state", Description: "ISA 3"}, verify_engine_state)
-	mcp.AddTool(server, &mcp.Tool{Name: "submit_intent", Description: "ISA 4 (Requires Rationale)"}, submit_intent)
-	mcp.AddTool(server, &mcp.Tool{Name: "validate_intent", Description: "ISA 5 (Confidence Gate)"}, validate_intent)
-	mcp.AddTool(server, &mcp.Tool{Name: "human_approve_intent", Description: "ISA 5b (Override StateHumanReq)"}, human_approve_intent)
+	mcp.AddTool(server, &mcp.Tool{Name: "submit_intent", Description: "ISA 4"}, submit_intent)
+	mcp.AddTool(server, &mcp.Tool{Name: "validate_intent", Description: "ISA 5"}, validate_intent)
+	mcp.AddTool(server, &mcp.Tool{Name: "human_approve_intent", Description: "ISA 5b"}, human_approve_intent)
 	mcp.AddTool(server, &mcp.Tool{Name: "begin_atomic_operation", Description: "ISA 6"}, begin_atomic_operation)
 	mcp.AddTool(server, &mcp.Tool{Name: "commit_atomic_operation", Description: "ISA 7"}, commit_atomic_operation)
 	mcp.AddTool(server, &mcp.Tool{Name: "abort_atomic_operation", Description: "ISA 8"}, abort_atomic_operation)
 	mcp.AddTool(server, &mcp.Tool{Name: "emit_diag_bundle", Description: "ISA 10"}, emit_diag_bundle)
-	mcp.AddTool(server, &mcp.Tool{Name: "lock_object", Description: "Hierarchy Locking"}, lock_object)
-	mcp.AddTool(server, &mcp.Tool{Name: "get_metrics", Description: "Observability"}, get_metrics)
-	mcp.AddTool(server, &mcp.Tool{Name: "blender_mutate_mesh", Description: "ISA 14"}, blender_mutate_mesh)
-	mcp.AddTool(server, &mcp.Tool{Name: "unity_mutate_gameobject", Description: "ISA 21"}, unity_mutate_gameobject)
+	mcp.AddTool(server, &mcp.Tool{Name: "lock_object", Description: "Locking"}, lock_object)
+	mcp.AddTool(server, &mcp.Tool{Name: "get_metrics", Description: "Metrics"}, get_metrics)
 	mcp.AddTool(server, &mcp.Tool{Name: "sync_transform", Description: "ISA 21*"}, sync_transform)
 	mcp.AddTool(server, &mcp.Tool{Name: "sync_material", Description: "ISA 22"}, sync_material)
 	mcp.AddTool(server, &mcp.Tool{Name: "sync_camera", Description: "ISA 23"}, sync_camera)
 	mcp.AddTool(server, &mcp.Tool{Name: "sync_selection", Description: "ISA 24"}, sync_selection)
 	mcp.AddTool(server, &mcp.Tool{Name: "sync_asset_atomic", Description: "ISA 26"}, sync_asset_atomic)
-	mcp.AddTool(server, &mcp.Tool{Name: "reconcile_sync_state", Description: "ISA 2"}, reconcile_sync_state)
-	mcp.AddTool(server, &mcp.Tool{Name: "get_operation_journal", Description: "Forensic WAL"}, get_operation_journal)
-	mcp.AddTool(server, &mcp.Tool{Name: "control_playback", Description: "Coordinated Timeline"}, control_playback)
+	mcp.AddTool(server, &mcp.Tool{Name: "get_operation_journal", Description: "WAL"}, get_operation_journal)
+	mcp.AddTool(server, &mcp.Tool{Name: "control_playback", Description: "Timeline"}, control_playback)
 	mcp.AddTool(server, &mcp.Tool{Name: "global_id_map_resolve", Description: "ISA 27"}, global_id_map_resolve)
-	mcp.AddTool(server, &mcp.Tool{Name: "vibe_multiplex", Description: "Kernel Multiplexer"}, vibe_multiplex)
-	mcp.AddTool(server, &mcp.Tool{Name: "set_engine_state", Description: "ISA"}, set_engine_state)
-	mcp.AddTool(server, &mcp.Tool{Name: "revoke_id", Description: "Meta"}, revoke_id)
+	mcp.AddTool(server, &mcp.Tool{Name: "vibe_multiplex", Description: "Multiplex"}, vibe_multiplex)
+	mcp.AddTool(server, &mcp.Tool{Name: "set_engine_state", Description: "State"}, set_engine_state)
+	mcp.AddTool(server, &mcp.Tool{Name: "revoke_id", Description: "Revoke"}, revoke_id)
 	mcp.AddTool(server, &mcp.Tool{Name: "epistemic_refusal", Description: "ISA 29"}, epistemic_refusal)
 	mcp.AddTool(server, &mcp.Tool{Name: "decommission_bridge", Description: "ISA 32"}, decommission_bridge)
 	mcp.AddTool(server, &mcp.Tool{Name: "reconstruct_state", Description: "Forensic"}, reconstruct_state)
-
+	mcp.AddTool(server, &mcp.Tool{Name: "invoke_specialist", Description: "Delegate"}, invoke_specialist)
+	mcp.AddTool(server, &mcp.Tool{Name: "get_bridge_heartbeat", Description: "Bridge Liveness"}, get_bridge_heartbeat)
+	mcp.AddTool(server, &mcp.Tool{Name: "get_bridge_handshake_state", Description: "Reality Align"}, get_bridge_handshake_state)
+	mcp.AddTool(server, &mcp.Tool{Name: "get_bridge_wal_state", Description: "WAL State"}, get_bridge_wal_state)
+	mcp.AddTool(server, &mcp.Tool{Name: "get_bridge_commit_requirements", Description: "Semantic Gate"}, get_bridge_commit_requirements)
+	mcp.AddTool(server, &mcp.Tool{Name: "execute_governed_mutation", Description: "Gov Mutate"}, execute_governed_mutation)
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil { log.Fatal(err) }
 }

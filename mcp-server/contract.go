@@ -99,6 +99,12 @@ type AtomicOpArgs struct {
 	Reason   string `json:"reason,omitempty"`
 }
 
+type CommitAtomicOpArgs struct {
+	IntentID    string `json:"intent_id"`
+	ProofOfWork string `json:"proof_of_work"`
+	Reason      string `json:"reason,omitempty"`
+}
+
 type MutateArgs struct {
 	IntentID string                 `json:"intent_id"`
 	OpSpec   map[string]interface{} `json:"op_spec"`
@@ -154,4 +160,65 @@ type RevokeIDArgs struct {
 
 type ForensicReplayArgs struct {
 	TargetMonotonicID int64 `json:"target_monotonic_id"`
+}
+
+type BridgeHeartbeat struct {
+	BridgePID             int    `json:"bridge_pid"`
+	UptimeSec             int    `json:"uptime_sec"`
+	EpochID               int64  `json:"epoch_id"`
+	OrchestratorConnected bool   `json:"orchestrator_connected"`
+	UnityConnected        bool   `json:"unity_connected"`
+	BlenderConnected       bool   `json:"blender_connected"`
+	LastTickHash          string `json:"last_tick_hash"`
+}
+
+type BridgeHandshakeState struct {
+	AssetID           string `json:"asset_id"`
+	BlenderExportHash string `json:"blender_export_hash"`
+	UnityImportHash   string `json:"unity_import_hash"`
+	HashMatch         bool   `json:"hash_match"`
+	LastVerified      string `json:"last_verified"`
+}
+
+type BridgeWalState struct {
+	WalHead           int64  `json:"wal_head"`
+	WalHash           string `json:"wal_hash"`
+	LastCommittedOp   string `json:"last_committed_op"`
+	PendingOps        int    `json:"pending_ops"`
+	RollbackAvailable bool   `json:"rollback_available"`
+}
+
+type BridgeTransactionState struct {
+	TransactionID string   `json:"transaction_id"`
+	Status        string   `json:"status"`
+	LockedAssets  []string `json:"locked_assets"`
+	TimeoutSec    int      `json:"timeout_sec"`
+}
+
+type BridgeDeltaState struct {
+	LastDeltaID    int64    `json:"last_delta_id"`
+	Source         string   `json:"source"`
+	AffectedAssets []string `json:"affected_assets"`
+	DeltaHash      string   `json:"delta_hash"`
+	Applied        bool     `json:"applied"`
+}
+
+type BridgeCommitRequirements struct {
+	RequiredHashes    map[string]string `json:"required_hashes"`
+	RationaleRequired bool              `json:"rationale_required"`
+	CommitAllowed     bool              `json:"commit_allowed"`
+}
+
+type TechnicalRationaleCheck struct {
+	Wal     string `json:"wal"`
+	Blender string `json:"blender"`
+	Unity   string `json:"unity"`
+	Reason  string `json:"reason"`
+}
+
+type InvokeSpecialistArgs struct {
+	SpecialistID string                 `json:"specialist_id"`
+	IntentID     string                 `json:"intent_id"`
+	CurrentHash  string                 `json:"current_hash"`
+	TargetIntent map[string]interface{} `json:"target_intent"`
 }

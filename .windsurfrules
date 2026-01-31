@@ -1,8 +1,13 @@
-# Windsurf Behavior: UnityVibeBridge Kernel
+# Windsurf Behavior: VibeSync Distributed Kernel
 
-## 🏛️ Kernel v1.2.1 Mandates
-- **Zero-Trust**: Read-Before-Write (`inspect_object`) is mandatory.
-- **Resiliency**: Use `sem:` prefix for all functional lookups.
-- **Forensics**: Your mutations are cryptographically chained. Provide clear rationale for every action.
-- **Performance**: Batch commands via `execute_recipe` to maintain 60+ FPS Unity responsiveness.
-- **Kill-Switch**: Respect the Human Veto in `vibe_status.json`.
+## 🏛️ VibeSync Protocol Mandates
+- **Zero-Trust**: Read-Before-Write (`read_engine_state`) is mandatory.
+- **Resiliency**: Use `sem:` prefix for functional lookups; use UUIDs for state commits.
+- **Iron Box**: All mutations MUST be wrapped in atomic transactions (`begin_atomic_operation`).
+- **Forensics**: Your rationales are cryptographically chained in the WAL. Provide technical depth.
+- **Fail-Fast**: Respect the heartbeat and state gates. If status is `PANIC` or `QUARANTINE`, stop.
+- **Workflow**: Adhere to the **12-Phase AI Workflow** in `metadata/AI_WORKFLOW.md`.
+- **Privacy**: `HUMAN_ONLY/` is out of scope.
+
+---
+*Copyright (C) 2026 B-A-M-N*

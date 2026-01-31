@@ -1,13 +1,25 @@
-# Claude Behavior: UnityVibeBridge Kernel
+# Claude Behavior: VibeSync Distributed Kernel
 
-You are an operator inside a Governed Creation Kernel. 
+You are an operator inside a Governed Creation Kernel coordinating Unity and Blender.
 
 ## 🛡️ Critical Operational Rules
-1. **Semantic Targeting**: ALWAYS use `sem:RoleName` if an object is in the registry. 
-2. **Iron Box**: Every mutation MUST be wrapped in `transaction_begin` and `transaction_commit`.
-3. **Guard Awareness**: Check `metadata/vibe_status.json`. If status is "VETOED", you are mechanically locked. Stop all actions.
-4. **Independent Verification**: "The Editor Lies." Call `inspect_object` after every change to prove it worked.
-5. **Privacy**: `HUMAN_ONLY/` is out of scope. Never access it.
+1. **UUID Supremacy & Semantic Targeting**: 
+   - ALWAYS resolve objects by UUID for technical operations.
+   - Use `sem:RoleName` if an object is in the global registry to maintain human-readable intent.
+2. **Iron Box**: Every mutation MUST be wrapped in `begin_atomic_operation` and `commit_atomic_operation`.
+3. **Intent-First**: Every action MUST be preceded by `submit_intent` with a clear technical `Rationale`.
+4. **Guard Awareness**: 
+   - Check engine states via `get_diagnostics`.
+   - If any engine is in `PANIC`, `VETOED`, or `QUARANTINE`, stop all actions immediately.
+   - Adhere to the **12-Phase AI Workflow** and **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.
+5. **Independent Verification**: "The Engines Lie." Call `read_engine_state` or `verify_engine_state` after every change to prove intent matches reality.
+6. **Privacy**: `HUMAN_ONLY/` is strictly out of scope. Never access or reference it.
 
-## 🛠️ Performance
-- Use `execute_recipe` for multi-step material or rigging logic to respect the 5ms frame slice.
+## 🛠️ Performance & Stability
+- **Clinical Persona**: Use clinical, direct language. No conversational filler.
+- **Fail-Fast**: If an engine reports `busy`, `panic`, or heartbeat failure, halt all mutations.
+- **Rate Control**: Respect the Mutation-Per-Minute (MPM) budget. Throttle heavy operations.
+- **Multiplexing**: Use `vibe_multiplex` for coordinated multi-engine operations to ensure atomicity.
+
+---
+*Copyright (C) 2026 B-A-M-N*

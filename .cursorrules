@@ -1,25 +1,27 @@
-# Cursor Rules: UnityVibeBridge Kernel
+# Cursor Rules: VibeSync Distributed Kernel
 
 ## 🏛️ Architectural Context
-- **Security Policy**: Bound by `AI_SECURITY_THREAT_ACCEPTANCE.md` and Kernel v1.2.1.
-- **The Kernel (`VibeBridgeKernel.cs`)**: The ONLY authorized mutation path. Irreducible and authenticated.
+- **Security Policy**: Bound by `AI_SECURITY_THREAT_ACCEPTANCE.md` and `AI_ENGINEERING_CONSTRAINTS.md`.
+- **The Orchestrator (`vibe-mcp-server`)**: The ONLY authorized authority for cluster state mutation.
 - **The Gate**: Every file change is audited by `security_gate.py`.
 
 ## 🛡️ Hard Bans (Mechanical Rejection)
-- **NO Direct Reflection**: Do not bypass the bridge via `System.Reflection`.
-- **NO Meta Editing**: Direct editing of `.meta` files is forbidden.
-- **NO Network/Shell**: No external network or process spawning from inside Unity.
+- **NO Direct Engine Mutation**: All changes MUST go through the MCP Orchestrator.
+- **NO Reflection/Shell**: Prohibited in all Adapters (Unity/Blender).
+- **NO Non-localhost Network**: Communication is loopback-only.
 
 ## 🚀 AI Behavioral Mandates
-1. **Read-Before-Write**: You MUST call `inspect_object` before any mutation.
-2. **Resilient Targeting**: Prioritize **Semantic Pathing** (`sem:RoleName`) over InstanceIDs. Only use IDs for temporary session objects.
-3. **Stealth Workflow**: Use `select_object(path, frame=true)` ONLY when requested. Default to background selection.
-4. **Iron Box Protocol**: Every mutation MUST be wrapped in `begin_transaction` and `commit_transaction`.
-5. **Forensic Awareness**: Mutations are recorded in a cryptographically chained ledger. Ensure every action is technically justified.
-6. **Guard Awareness**: Check `metadata/vibe_status.json`. If it is "Ready", proceed. If "VETOED", HALT and ask the human to re-arm.
-7. **Time Budget**: Respect the 5ms frame slice. Use `execute_recipe` for multi-step logic to ensure atomicity.
-8. **Cynical Self-Audit**: Identify 3 failure points before destructive operations.
+1. **Read-Before-Write**: Call `read_engine_state` before any mutation.
+2. **Resilient Targeting**: Prioritize **UUIDs** for state consistency, but use **Semantic Pathing** (`sem:RoleName`) for human-readable intent.
+3. **Iron Box Protocol**: Wrap ALL mutations in `begin_atomic_operation` and `commit_atomic_operation`.
+4. **Forensic Awareness**: Every action is journaled in the Write-Ahead Log (WAL). Provide clear rationale via `submit_intent`.
+5. **Guard Awareness**: Adhere to the **12-Phase AI Workflow** and **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.
+6. **Fail-Fast**: If `get_diagnostics` reports anything other than `READY`, halt and notify the user.
+7. **Cynical Self-Audit**: Identify 3 failure modes from the `metadata/AI_WORKFLOW.md` checklist before destructive operations.
 
 ## 📁 File System Integrity
-- Write ONLY to `captures/`, `metadata/`, `logs/`, or `optimizations/`.
 - `HUMAN_ONLY/` is invisible. Never access or reference it.
+- Operational data goes to `.vibesync/`.
+
+---
+*Copyright (C) 2026 B-A-M-N*

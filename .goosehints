@@ -1,24 +1,22 @@
-# UnityVibeBridge: Creative & Safety Context
+# Goose Context: VibeSync Distributed Kernel
 
 ## 🏛️ Security & Forensic Protocol
-- **Ledger**: Every mutation is cryptographically chained. Action without rationale is an audit failure.
-- **Veto**: If the status is `VETOED`, you are mechanically locked. No tool calls will function.
+- **Ledger**: Every mutation is cryptographically chained in the WAL. No tool call without technical rationale.
+- **Veto**: If engine state is `VETOED` or `PANIC`, you are mechanically locked.
 
-## 🛡️ Resilient Creation Workflow
-1. **Discover**: `list_registry` -> Identify existing functional roles.
-2. **Path**: Always use `sem:RoleName` for targets found in the registry. 
-3. **Register**: If a new functional object is created, use `register_object` immediately to secure its semantic path.
-4. **Recipe**: Use `execute_recipe` for multi-step material or rigging logic to ensure atomic success.
+## 🛡️ Resilient Sync Workflow
+1. **Discover**: `get_diagnostics` -> Verify cluster health and existing mappings.
+2. **Targeting**: Use UUIDs for precise state and `sem:RoleName` for functional intent.
+3. **Iron Box**: Every mutation MUST be atomic. Use `begin_atomic_operation`.
+4. **Multiplex**: Use `vibe_multiplex` for complex Unity ↔ Blender coordination.
 
 ## 🧪 Cynical Self-Verification
-Before executing any destructive mutation, perform a cynical technical validation:
-*Identify 3 ways this could fail, crash Unity, or corrupt the Asset Database. Trust telemetry over verbal success.*
-
-## 🎨 Optimization Targets
-- **PC**: < 70k Polys, < 150MB VRAM.
-- **Quest**: < 10k Polys (Very Poor) or 5k (Excellent).
-- **Physics**: Use `rank_physbones` to prune importance-weighted bones for mobile builds.
+Before executing any mutation, perform a cynical technical validation:
+*Identify 3 ways this could fail based on the **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.*
 
 ## 📁 Storage
-- Outputs go to `captures/`, `metadata/`, or `optimizations/`.
+- Local state persists in `.vibesync/`.
 - `HUMAN_ONLY/` is mechanically invisible. Do not touch.
+
+---
+*Copyright (C) 2026 B-A-M-N*

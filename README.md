@@ -46,8 +46,9 @@ sequenceDiagram
 ---
 
 ## 🏎️ Quick Start
-1.  **Install Prerequisites**: Ensure you have **Go 1.24+**, **Python 3.10+**, **Unity 2022.3+**, and **Blender 3.6+**.
-2.  **Start Orchestrator**: 
+1.  **Install Prerequisites**: Ensure you have **Go 1.24+**, **Python 3.10+**, **Unity 2022.3+**, **Blender 3.6+**, and **Git LFS**.
+2.  **Initialize LFS**: `git lfs install`
+3.  **Start Orchestrator**: 
     ```bash
     cd mcp-server && go run main.go contract.go
     ```

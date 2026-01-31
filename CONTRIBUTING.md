@@ -108,7 +108,51 @@ Run `go mod tidy` to ensure all transitive dependencies are resolved.
 
 
 
+
+
+
+
+## 📦 Git Large File Storage (LFS)
+
+
+
+Since VibeSync bridges Unity and Blender, we frequently handle large binary assets (meshes, textures, .blend files). **Git LFS is mandatory** for this repository to prevent bloat.
+
+
+
+
+
+
+
+1.  **Install**: `sudo apt install git-lfs` (or your OS equivalent).
+
+
+
+2.  **Setup**: `git lfs install`
+
+
+
+3.  **Tracking**: Most binary types are already tracked in `.gitattributes`. If you add a new binary type, use: `git lfs track "*.ext"`
+
+
+
+
+
+
+
+---
+
+
+
+
+
+
+
 ## 🧪 Technical Testing & Development
+
+
+
+
 
 
 

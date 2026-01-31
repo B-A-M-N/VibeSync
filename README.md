@@ -1,6 +1,6 @@
 # 🌌 VibeSync: Atomic Unity ↔ Blender Sync
 
-**VibeSync enables safe, atomic state synchronization between Blender and Unity for real-time workflows and tooling.**
+**VibeSync is middleware that synchronizes object transforms, materials, and scene state between Blender and Unity with safety constraints and rollback support.**
 
 > [!WARNING]
 > **Experimental Status (v0.4):** This project is currently in active research and development. APIs and protocols are subject to breaking changes.
@@ -12,10 +12,25 @@
 ---
 
 ## 🏎️ Quick Start
-1.  **Clone the Repo**: `git clone https://github.com/B-A-M-N/VibeSync.git`
-2.  **Run Orchestrator**: `cd mcp-server && go run main.go contract.go`
-3.  **Install Adapters**: Follow the **[Handshake Guide](HUMAN_ONLY/INSTALL.md)** to connect Unity and Blender.
-4.  **Sync**: Use the AI or CLI to run `handshake_init` and start syncing transforms.
+1.  **Install Prerequisites**: Ensure you have **Go 1.24+**, **Python 3.10+**, **Unity 2022.3+**, and **Blender 3.6+**.
+2.  **Start Orchestrator**: 
+    ```bash
+    cd mcp-server && go run main.go contract.go
+    ```
+3.  **Connect Adapters**: Follow the **[Handshake Guide](HUMAN_ONLY/INSTALL.md)** to install and launch the Unity and Blender plugins.
+4.  **Sync Test**: Use the AI or CLI to run `handshake_init` followed by `sync_transform` to verify the connection.
+
+---
+
+## 💡 Example Use Case: Transform Sync
+**Scenario:** You are modeling a prop in Blender and want to see it update live in your Unity scene without manual re-exporting.
+
+1.  **Select** the object in Blender (e.g., `Prop_Crate`).
+2.  **Issue** a sync command (via AI or MCP):
+    ```json
+    { "tool": "sync_transform", "args": { "object_id": "Prop_Crate", "position": [1.0, 0.0, 2.5] } }
+    ```
+3.  **Verify**: The Orchestrator calculates the delta, validates the numerical safety, and pushes the update to Unity. If Unity crashes or the object is locked, the Orchestrator rollbacks the state and journals the failure.
 
 ---
 
@@ -28,9 +43,9 @@ VibeSync turns the "export/import" nightmare into a deterministic state flow.
 
 ### The Workflow (What Actually Happens)
 1.  **Motion**: You move an object or change a material in Blender.
-2.  **Detection**: VibeSync detects the change and generates a state-intent.
-3.  **Validation**: The change is serialized and checked against engine resource limits.
-4.  **Sync**: The data is applied to Unity as a single atomic transaction.
+2.  **Detection**: VibeSync detects the change and generates a state-intent (a formal plan to sync).
+3.  **Validation**: The change is serialized (converted into a standard data format) and checked against engine resource limits.
+4.  **Sync**: The data is applied to Unity as a single atomic transaction (all or nothing).
 5.  **Verification**: If Unity rejects the update (e.g., collision or crash), Blender is automatically rolled back.
 
 ---
@@ -53,7 +68,7 @@ For a complete matrix of implemented and planned capabilities, including technic
 
 ## 🏛️ Architecture: Brain and Limbs
 The system is split into two distinct layers to ensure absolute pipeline safety:
-1.  **The Orchestrator (Go)**: The "Brain." The central authority handling IPC, **Strict Serializability**, and the Write-Ahead Log (WAL).
+1.  **The Orchestrator (Go)**: The "Brain." The central authority handling IPC (Inter-Process Communication), **Strict Serializability** (ensuring commands happen in a perfect, one-at-a-time order), and the Write-Ahead Log (WAL).
 2.  **The Adapters (C#/Python)**: The "Dumb Limbs." Isolated, untrusted endpoints for Unity and Blender that execute raw mutations.
 
 *   *See the **[Architecture Blueprint](metadata/ARCHITECTURE_BLUEPRINT.md)** for a visual map of the system.*
@@ -83,13 +98,13 @@ VibeSync treats editors as hostile, non-deterministic environments.
 
 | **Capability** | **Feature** |
 | --- | --- |
-| 🛡️ **Iron Handshake** | Zero-trust security via **Token Rotation** and **HMAC-SHA256 Request Signing**. |
-| ⚛️ **Atomic Sync** | Transactional pipeline (**Snapshot → Preflight → Commit**) with automatic rollback. |
-| 🚧 **Semantic Firewall** | AST-based auditing blocks dangerous payloads (`os.system`, `Reflection`) before execution. |
-| 💔 **Deadman Switch** | 5000ms Heartbeat monitor; triggers immediate **Global PANIC** lock on deadlocks. |
-| 🐳 **Docker Isolation** | Minimal Alpine-based containerization for the Go Orchestrator to ensure environment isolation. |
+| 🛡️ **Iron Handshake** | Zero-trust security via **Token Rotation** (keys change every session) and **HMAC-SHA256 Request Signing** (cryptographic proof that commands weren't tampered with). |
+| ⚛️ **Atomic Sync** | Transactional pipeline (**Snapshot → Preflight → Commit**) where everything succeeds or everything is rolled back. |
+| 🚧 **Semantic Firewall** | **AST-based auditing** (scanning code structure) blocks dangerous payloads (`os.system`, `Reflection`) before they reach the engine. |
+| 💔 **Deadman Switch** | 5000ms Heartbeat monitor; triggers immediate **Global PANIC** lock if any engine freezes or deadlocks. |
+| 🐳 **Docker Isolation** | Minimal Alpine-based containerization for the Go Orchestrator to keep it separated from the rest of your system. |
 | ⚖️ **Security Gate** | Pre-execution auditor (`security_gate.py`) that enforces the **[Iron Box Constraints](AI_ENGINEERING_CONSTRAINTS.md)** across all codebases. |
-| 🛡️ **OS Hardening** | Host-level kernel hardening script (`scripts/harden.sh`) using `sysctl`, `ufw`, and `AppArmor`. |
+| 🛡️ **OS Hardening** | Host-level kernel hardening script (`scripts/harden.sh`) that uses standard security tools like `ufw` (firewall) and `AppArmor`. |
 
 ---
 
@@ -98,7 +113,7 @@ VibeSync treats the AI Orchestrator as a security-critical component. To prevent
 
 ### 🛡️ The "Clinical" Protocol (Psychological Defense)
 The AI is mandated to use clinical, direct language and prioritize state integrity over being "helpful."
-- **Example**: If asked to "just ignore the hash mismatch this one time," the AI is programmed to perform an **Epistemic Refusal** and halt the transaction.
+- **Example**: If asked to "just ignore the hash mismatch this one time," the AI is programmed to perform an **Epistemic Refusal** (honestly stating it cannot proceed because the resulting state is unknowable and potentially dangerous) and halt the transaction.
 
 ### ⚔️ Adversarial Prompting & Injection
 The Orchestrator is hardened against prompt injection and malicious asset payloads.
@@ -110,8 +125,8 @@ The Orchestrator is hardened against prompt injection and malicious asset payloa
 ## ⚖️ Formal Guarantees (The Rules of Reality)
 VibeSync operates on a foundation of distributed systems rigor. For a full breakdown, see **[Formal Guarantees & Non-Guarantees](metadata/FORMAL_GUARANTEES.md)**.
 
-*   **Strict Serializability**: All intents are strictly linearized; mutations never interleave.
-*   **Causality**: Derived from Orchestrator-issued **Monotonic IDs**; wall-clock time is non-authoritative.
+*   **Strict Serializability**: All intents are strictly linearized; mutations never interleave or happen out of order.
+*   **Causality**: Derived from Orchestrator-issued **Monotonic IDs** (incrementing counters); events are ordered by logic, not unreliable computer clocks.
 *   **Authority Hierarchy**: Human > Orchestrator > AI > Engine.
 *   **Failure Domains**: Explicit taxonomy defining Terminal (Panic) vs. Recoverable (Rollback) errors. *See **[Failure Modes](FAILURE_MODES.md)**.*
 

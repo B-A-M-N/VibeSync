@@ -1,8 +1,21 @@
 # 🌌 VibeSync: Atomic Unity ↔ Blender Sync
 
+**VibeSync enables safe, atomic state synchronization between Blender and Unity for real-time workflows and tooling.**
+
+> [!WARNING]
+> **Experimental Status (v0.4):** This project is currently in active research and development. APIs and protocols are subject to breaking changes.
+
 > [!IMPORTANT]
 > **VibeSync is a transactional sync bridge that keeps Blender and Unity state consistent in real time, without corrupting either application.**
 > It allows transforms, assets, and scene state to be mirrored across tools while enforcing atomic updates, rollback, and crash safety.
+
+---
+
+## 🏎️ Quick Start
+1.  **Clone the Repo**: `git clone https://github.com/B-A-M-N/VibeSync.git`
+2.  **Run Orchestrator**: `cd mcp-server && go run main.go contract.go`
+3.  **Install Adapters**: Follow the **[Handshake Guide](HUMAN_ONLY/INSTALL.md)** to connect Unity and Blender.
+4.  **Sync**: Use the AI or CLI to run `handshake_init` and start syncing transforms.
 
 ---
 
@@ -147,6 +160,7 @@ Requires **Maintenance Contributions** or a **License Fee** for revenue-generati
 New to VibeSync or AI-assisted creative workflows? Start here:
 *   [**AI for Humans: The Beginner's Manual**](HUMAN_ONLY/FOR_BEGINNERS.md) – Essential reading on AI psychosis, cognition gaps, and how to work safely with AI co-pilots.
 *   [**Blender Beginner's Manual**](HUMAN_ONLY/BLENDER_FOR_HUMANS.md) – Step-by-step setup and basic commands specifically for Blender artists.
+*   [**For Hiring Managers: Engineering Audit**](HUMAN_ONLY/FOR_HIRING_MANAGERS.md) – A deep dive into the architectural decisions, security invariants, and systems engineering for recruiters and technical leads.
 
 ---
 

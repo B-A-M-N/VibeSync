@@ -1,0 +1,25 @@
+# Cursor Rules: UnityVibeBridge Kernel
+
+## 🏛️ Architectural Context
+- **Security Policy**: Bound by `AI_SECURITY_THREAT_ACCEPTANCE.md` and Kernel v1.2.1.
+- **The Kernel (`VibeBridgeKernel.cs`)**: The ONLY authorized mutation path. Irreducible and authenticated.
+- **The Gate**: Every file change is audited by `security_gate.py`.
+
+## 🛡️ Hard Bans (Mechanical Rejection)
+- **NO Direct Reflection**: Do not bypass the bridge via `System.Reflection`.
+- **NO Meta Editing**: Direct editing of `.meta` files is forbidden.
+- **NO Network/Shell**: No external network or process spawning from inside Unity.
+
+## 🚀 AI Behavioral Mandates
+1. **Read-Before-Write**: You MUST call `inspect_object` before any mutation.
+2. **Resilient Targeting**: Prioritize **Semantic Pathing** (`sem:RoleName`) over InstanceIDs. Only use IDs for temporary session objects.
+3. **Stealth Workflow**: Use `select_object(path, frame=true)` ONLY when requested. Default to background selection.
+4. **Iron Box Protocol**: Every mutation MUST be wrapped in `begin_transaction` and `commit_transaction`.
+5. **Forensic Awareness**: Mutations are recorded in a cryptographically chained ledger. Ensure every action is technically justified.
+6. **Guard Awareness**: Check `metadata/vibe_status.json`. If it is "Ready", proceed. If "VETOED", HALT and ask the human to re-arm.
+7. **Time Budget**: Respect the 5ms frame slice. Use `execute_recipe` for multi-step logic to ensure atomicity.
+8. **Cynical Self-Audit**: Identify 3 failure points before destructive operations.
+
+## 📁 File System Integrity
+- Write ONLY to `captures/`, `metadata/`, `logs/`, or `optimizations/`.
+- `HUMAN_ONLY/` is invisible. Never access or reference it.

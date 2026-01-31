@@ -17,12 +17,32 @@ Adapters **MUST NOT** possess autonomous logic, local state persistence (outside
 - **Atomic Execution**: Adapters must support "Preflight" checks where they report if a mutation *would* succeed without actually applying it.
 - **Fail-Fast**: If an internal engine error occurs, the adapter must report it immediately and enter a `STOPPED` state until the Orchestrator intervenes.
 
-## 🔌 4. Extensibility Requirements
-Third-party adapters (e.g., Unreal, Maya) are supported if they implement the following:
-1. **JSON-RPC Over Loopback**: The communication protocol is strictly JSON-RPC 2.0 over a localhost socket.
-2. **Heartbeat Handler**: Response to a `health_check` ping within <100ms.
-3. **Snapshot API**: Ability to generate a deterministic hierarchy and hash of the current scene.
-4. **Sandboxed Import**: A mechanism to import assets into a temporary/hidden namespace for validation before committing to the main scene.
+## 🔌 4. Extensibility & Schema
+
+VibeSync supports custom extensions via the **Payload Injection** system.
+
+
+
+- **Custom Asset Types**: Users can register new UUID prefixes for proprietary data (e.g., custom physics volumes). These must implement a `to_intermediate_json()` method.
+
+- **Hook Registry**: Adapters can expose `pre_sync` and `post_sync` hooks for local engine side-effects (e.g., updating a local UI element). These hooks are **non-blocking** and cannot reject the mutation.
+
+
 
 ---
+
+
+
+## 🏗️ 5. Versioning & Evolution
+
+- **Contract Pinning**: Every adapter must report its **Protocol Version** (e.g., `v0.4.2`). 
+
+- **Breaking Changes**: Any change to the JSON schema results in a major version bump. Orchestrator will refuse connection to an adapter more than one minor version behind.
+
+- **Schema Migration**: VibeSync does not support live schema migration. All engines must restart to adopt a new protocol version.
+
+
+
+---
+
 *VibeSync: Modular Reality.*

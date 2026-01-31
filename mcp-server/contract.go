@@ -25,6 +25,7 @@ const (
 	StatePanic    EngineState = "PANIC"
 	StateHumanReq EngineState = "HUMAN_INTERVENTION_REQUIRED"
 	StateDesync   EngineState = "DESYNC"
+	StateQuarantine EngineState = "QUARANTINE"
 )
 
 type VibeBaseModel struct {
@@ -40,6 +41,8 @@ type IntentEnvelope struct {
 	Rationale       string    `json:"rationale"`
 	Confidence      float64   `json:"confidence"`
 	Scope           []string  `json:"scope"`
+	Capabilities    []string  `json:"capabilities"`
+	Provenance      string    `json:"provenance"`
 	BudgetMS        int       `json:"budget_ms"`
 	Signature       string    `json:"signature"`
 }

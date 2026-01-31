@@ -8,30 +8,21 @@ This document defines the contractual behavior of the VibeSync Orchestrator. The
 
 - **Single-Writer Semantics**: The Orchestrator is the sole authority for state mutation. No engine-to-engine direct mutations are permitted.
 - **Total Order of Intents**: All intents are strictly linearized via a global monotonic counter. Two intents NEVER interleave.
-- **Causal Consistency**: Operation B is guaranteed to see the effects of Operation A if B was issued after A in the Orchestrator's timeline.
-- **Conflict Resolution**: In the event of divergent state between Unity and Blender, the **Orchestrator's Source of Truth** (usually the last committed Snapshot) wins. Engines are treated as eventually-consistent caches that must be purged on conflict.
+- **Causal Hash-Chaining**: Every entry in the Write-Ahead Log (WAL) contains a cryptographic hash of the previous entry. The history of "Reality" is tamper-evident and immutable.
+- **Intent Budgeting**: Every session is assigned a temporal budget. Exceeding the "Mutation-Per-Minute" (MPM) threshold triggers mandatory trust degradation.
+- **Conflict Resolution (LWW)**: In cases of simultaneous edits where `lock_object` was bypassed, VibeSync enforces **Last-Writer-Wins** based on the Orchestrator's monotonic ID arrival time.
+- **Deterministic Convergence**: The system guarantees that both engines will eventually reach the same hash state once the intent queue is empty.
 
 ---
 
-## 🏚️ 2. Failure Domains & Persistence
-
-| Component Failure | Recoverability | Persistence Impact |
-| :--- | :--- | :--- |
-| **Adapter Crash** | **High** | Session revoked. State survives in the engine; must re-handshake. |
-| **Engine Crash** | **Partial** | WAL replay can recover intent, but unsaved engine state is lost. |
-| **Orchestrator Crash** | **High** | WAL (Write-Ahead Log) replay restores all committed transactions. |
-| **Network Partition** | **Zero** | Triggers **Circuit Breaker**. Mutation is aborted/rolled back. |
-| **Power Loss** | **Medium** | Committed WAL entries survive. Mid-commit transactions are rolled back. |
-
-- **Persistence Guarantee**: Any mutation that has received a `commit_atomic_operation` confirmation is persistent in the Orchestrator's WAL.
-
----
-
-## ⏱️ 3. The Time Model
+## ⏱️ 3. The Time Model & Behavioral Throttling
 
 - **Authoritative Clock**: The Orchestrator's internal monotonic counter is the **sole source of causality**.
-- **Advisory Timestamps**: Wall-clock timestamps (UTC) are recorded for forensic logging but are **non-authoritative** for ordering or logic.
-- **Clock Skew**: VibeSync is immune to system clock skew because it does not rely on wall-clock time for state synchronization.
+- **Adaptive Throttling**: The system monitors the "entropy" of commands. Rapidly varying or structurally deep mutations trigger a "Cooldown" window where the engine is locked to read-only state.
+- **Networking & Latency**: 
+  - VibeSync is optimized for **Local Loopback (<1ms)**. 
+  - **Jitter Buffer**: The Orchestrator maintains a 50ms jitter buffer for out-of-order monotonic ID arrival. 
+  - **Congestion Policy**: If the engine `BUSY` signal persists >5s, the pending mutation queue is purged to prevent memory exhaustion.
 
 ---
 

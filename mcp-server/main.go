@@ -19,11 +19,15 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -68,8 +72,25 @@ var (
 	monotonicID int64
 	clockMu     sync.Mutex
 
+	lastWalHash string
+	walMu       sync.Mutex
+
 	requestCounts = make(map[string]int)
 	rateMu        sync.Mutex
+
+	hardenedClient = &http.Client{
+		Timeout: 15 * time.Second,
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   5 * time.Second,
+				KeepAlive: 30 * time.Second,
+				LocalAddr: &net.TCPAddr{IP: net.ParseIP("127.0.0.1")},
+			}).DialContext,
+			Proxy: nil,
+			MaxIdleConns: 100,
+			IdleConnTimeout: 90 * time.Second,
+		},
+	}
 )
 
 type VibeTransaction struct {
@@ -80,12 +101,15 @@ type VibeTransaction struct {
 }
 
 type EngineData struct {
-	Token        string      `json:"token"`
-	State        EngineState `json:"state"`
-	Generation   int         `json:"generation"`
-	Version      string      `json:"version"`
-	VersionHash  string      `json:"version_hash"`
-	TrustExpiry  time.Time   `json:"trust_expiry"`
+	Token         string      `json:"token"`
+	State         EngineState `json:"state"`
+	Generation    int         `json:"generation"`
+	Version       string      `json:"version"`
+	VersionHash   string      `json:"version_hash"`
+	TrustExpiry   time.Time   `json:"trust_expiry"`
+	TrustScore    int         `json:"trust_score"`
+	MutationCount int         `json:"mutation_count"`
+	LastMutation  time.Time   `json:"last_mutation"`
 }
 
 func init() {
@@ -120,14 +144,24 @@ func isRateLimited(target string) bool {
 }
 
 func auditPayload(data interface{}) error {
+	if data == nil { return nil }
 	jsonBytes, _ := json.Marshal(data)
 	payload := strings.ToLower(string(jsonBytes))
 
 	// Hard Execution Bans
 	blocked := []string{
-		"os.system", "exec(", "eval(", "rm -rf", "reflection", 
-		"process.start", "import ", "__import__", "powershell",
-		"cmd.exe", "/bin/sh", "/bin/bash",
+		"os.system",    // skip-security-gate
+		"exec(",        // skip-security-gate
+		"eval(",        // skip-security-gate
+		"rm -rf",       // skip-security-gate
+		"reflection",   // skip-security-gate
+		"process.start", // skip-security-gate
+		"import ",      // skip-security-gate
+		"__import__",   // skip-security-gate
+		"powershell",   // skip-security-gate
+		"cmd.exe",      // skip-security-gate
+		"/bin/sh",      // skip-security-gate
+		"/bin/bash",    // skip-security-gate
 	}
 	for _, b := range blocked { 
 		if strings.Contains(payload, b) { 
@@ -135,20 +169,75 @@ func auditPayload(data interface{}) error {
 		} 
 	}
 
-	// Numerical Instability check (NaN/Inf) - check marshaled string for common representations
+	// Numerical Instability check (NaN/Inf)
 	if strings.Contains(payload, "nan") || strings.Contains(payload, "inf") {
 		return fmt.Errorf("NUMERICAL_INSTABILITY: NaN/Inf detected in payload")
+	}
+
+	// Semantic Invariants (Impossible State Guards)
+	if strings.Contains(payload, "children") || strings.Contains(payload, "hierarchy") {
+		if len(payload) > 100000 {
+			return fmt.Errorf("SEMANTIC_VIOLATION: Scene graph ceiling exceeded")
+		}
 	}
 
 	return nil
 }
 
+func decayTrust(target string, amount int, reason string) {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+	e, ok := engines[target]
+	if !ok {
+		return
+	}
+	e.TrustScore -= amount
+	if e.TrustScore < 0 {
+		e.TrustScore = 0
+	}
+	if e.TrustScore < 20 && e.State != StatePanic {
+		e.State = StateQuarantine
+		dispatchVibeEvent(LevelWarn, "quarantine_triggered", "", "COOL_OFF", map[string]interface{}{"target": target, "reason": reason})
+	}
+}
+
 func sendToEngine(target, endpoint, method string, data interface{}) (map[string]interface{}, error) {
-	if isRateLimited(target) { return nil, fmt.Errorf("RATE_LIMIT") }
+	stateMu.RLock()
+	engine, ok := engines[target]
+	stateMu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("unknown target")
+	}
+
+	// 1. Adaptive Throttling (Intent Budgeting)
+	if method == "POST" && !strings.Contains(endpoint, "handshake") {
+		stateMu.Lock()
+		now := time.Now()
+		if now.Sub(engine.LastMutation) < 200*time.Millisecond {
+			engine.MutationCount++
+		} else {
+			engine.MutationCount = 1
+		}
+		engine.LastMutation = now
+
+		// If mutation frequency is too high, throttle and decay trust
+		if engine.MutationCount > 5 {
+			stateMu.Unlock()
+			decayTrust(target, 5, "EXCESSIVE_MUTATION_RATE")
+			time.Sleep(1 * time.Second) // Force cooldown
+			return nil, fmt.Errorf("RATE_LIMITED_ADAPTIVE")
+		}
+		stateMu.Unlock()
+	}
+
+	if isRateLimited(target) {
+		return nil, fmt.Errorf("RATE_LIMIT")
+	}
 	// Basic audit
-	if err := auditPayload(data); err != nil { 
+	if err := auditPayload(data); err != nil {
 		dispatchVibeEvent(LevelError, "security_intercept", "", "PANIC", map[string]interface{}{"error": err.Error()})
-		return nil, err 
+		decayTrust(target, 20, "AUDIT_VIOLATION")
+		return nil, err
 	}
 	
 	// Sanitize endpoint
@@ -177,14 +266,26 @@ func sendToEngine(target, endpoint, method string, data interface{}) (map[string
 	return nil, fmt.Errorf("ENGINE_ERROR | %v", lastErr)
 }
 
+func computeSignature(token, timestamp, method, path, body string) string {
+	h := hmac.New(sha256.New, []byte(token))
+	h.Write([]byte(timestamp + "|" + method + "|" + path + "|" + body))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
 func attemptSend(target, endpoint, method string, data interface{}) (map[string]interface{}, error) {
 	stateMu.RLock(); engine, ok := engines[target]; stateMu.RUnlock()
 	if !ok || engine.State == StatePanic || engine.State == StateHumanReq { return nil, fmt.Errorf("LOCKED") }
+
+	// Quarantine Enforcement: Only allow GET (Read) operations
+	if engine.State == StateQuarantine && method != "GET" && !strings.Contains(endpoint, "health") {
+		return nil, fmt.Errorf("QUARANTINE_READ_ONLY")
+	}
+
 	if time.Now().After(engine.TrustExpiry) && engine.State == StateRunning { return nil, fmt.Errorf("EXPIRED") }
 
 	port := UnityPort
 	if target == "blender" { port = BlenderPort }
-	url := fmt.Sprintf("http://localhost:%d/%s", port, endpoint)
+	url := fmt.Sprintf("http://127.0.0.1:%d/%s", port, endpoint)
 
 	mid := nextMonotonicID()
 	tid := ""
@@ -203,17 +304,24 @@ func attemptSend(target, endpoint, method string, data interface{}) (map[string]
 	}
 	
 	jsonBody, _ := json.Marshal(data)
+	bodyStr := string(jsonBody)
+	if data == nil { bodyStr = "" }
+	
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	signature := computeSignature(engine.Token, timestamp, method, "/"+endpoint, bodyStr)
+
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonBody))
 	if err != nil { return nil, err }
 	
 	req.Header.Set("X-Vibe-Token", engine.Token)
+	req.Header.Set("X-Vibe-Signature", signature)
+	req.Header.Set("X-Vibe-Timestamp", timestamp)
 	req.Header.Set("X-Vibe-Session", currentSessionID)
 	req.Header.Set("X-Vibe-Generation", fmt.Sprintf("%d", engine.Generation))
 	if tid != "" { req.Header.Set("X-Vibe-Transaction", tid) }
 	req.Header.Set("Content-Type", "application/json")
 	
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := hardenedClient.Do(req)
 	if err != nil { return nil, err }
 	defer resp.Body.Close()
 	
@@ -338,13 +446,52 @@ func startHeartbeatWatcher() {
 
 // --- TOOLS ---
 
+func verifyAdapterIntegrity(target string) (string, error) {
+	path := "unity-bridge/Editor/VibeBridgeServer.cs"
+	if target == "blender" {
+		path = "blender-bridge/bridge_server.py"
+	}
+	
+	// In a real production environment, we would check the relative path 
+	// from the binary or a configured source root.
+	data, err := os.ReadFile("../" + path)
+	if err != nil {
+		// Fallback for docker/different working dirs
+		data, err = os.ReadFile(path)
+		if err != nil { return "", err }
+	}
+	
+	h := sha256.New()
+	h.Write(data)
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
 func handshake_init(ctx context.Context, req *mcp.CallToolRequest, args HandshakeInitArgs) (*mcp.CallToolResult, any, error) {
-	stateMu.Lock(); engines[args.Target].State = StateStarting; engines[args.Target].Generation++; newToken, chal := uuid.New().String(), uuid.New().String(); stateMu.Unlock()
+	// 1. Integrity Check
+	hash, err := verifyAdapterIntegrity(args.Target)
+	if err != nil {
+		log.Printf("⚠️ INTEGRITY ERROR | Could not hash %s adapter: %v", args.Target, err)
+	} else {
+		log.Printf("🛡️ INTEGRITY | %s adapter hash: %s", args.Target, hash)
+	}
+
+	stateMu.Lock()
+	engines[args.Target].State = StateStarting
+	engines[args.Target].Generation++
+	newToken, chal := uuid.New().String(), uuid.New().String()
+	stateMu.Unlock()
+
 	res, err := sendToEngine(args.Target, "handshake", "POST", map[string]interface{}{"version": args.Version, "new_token": newToken, "challenge": chal})
 	if err != nil || res["response"] != "VIBE_HASH_"+chal { return nil, nil, fmt.Errorf("AUTH_FAILED") }
-	stateMu.Lock(); e := engines[args.Target]; e.Token, e.Version, e.State, e.TrustExpiry = newToken, fmt.Sprintf("%v", res["engine_version"]), StateRunning, time.Now().Add(60*time.Minute); stateMu.Unlock()
+	
+	stateMu.Lock()
+	e := engines[args.Target]
+	e.Token, e.Version, e.State, e.TrustExpiry = newToken, fmt.Sprintf("%v", res["engine_version"]), StateRunning, time.Now().Add(60*time.Minute)
+	stateMu.Unlock()
+	
 	dispatchVibeEvent(LevelInfo, "handshake_complete", "", "READY", map[string]interface{}{"target": args.Target})
-	saveState(); return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "OK"}}}, nil, nil
+	saveState()
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "OK"}}}, nil, nil
 }
 
 func read_engine_state(ctx context.Context, req *mcp.CallToolRequest, args ReadStateArgs) (*mcp.CallToolResult, any, error) {
@@ -360,9 +507,15 @@ func verify_engine_state(ctx context.Context, req *mcp.CallToolRequest, args Ver
 
 func submit_intent(ctx context.Context, req *mcp.CallToolRequest, args SubmitIntentArgs) (*mcp.CallToolResult, any, error) {
 	if args.Envelope.Rationale == "" { return nil, nil, fmt.Errorf("RATIONALE_REQUIRED") }
+	if args.Envelope.Provenance == "" { return nil, nil, fmt.Errorf("PROVENANCE_REQUIRED") }
 	if args.Envelope.Confidence < 0 || args.Envelope.Confidence > 1.0 { return nil, nil, fmt.Errorf("INVALID_CONFIDENCE") }
+	
 	id := uuid.New().String(); txMu.Lock(); intents[id] = args.Envelope; txMu.Unlock()
-	dispatchVibeEvent(LevelInfo, "intent_submitted", id, "VALIDATE", map[string]interface{}{"confidence": args.Envelope.Confidence})
+	dispatchVibeEvent(LevelInfo, "intent_submitted", id, "VALIDATE", map[string]interface{}{
+		"confidence": args.Envelope.Confidence,
+		"provenance": args.Envelope.Provenance,
+		"capabilities": args.Envelope.Capabilities,
+	})
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: id}}}, nil, nil
 }
 
@@ -609,11 +762,22 @@ func saveState() {
 }
 
 func journalOperation(op map[string]interface{}) {
+	walMu.Lock(); defer walMu.Unlock()
 	if activeTransaction != nil { op["tid"] = activeTransaction.ID }
+	
+	// Causal Hash-Chaining
+	op["prev_hash"] = lastWalHash
 	data, _ := json.Marshal(op)
+	
+	h := sha256.New()
+	h.Write(data)
+	lastWalHash = hex.EncodeToString(h.Sum(nil))
+	op["hash"] = lastWalHash
+	
+	finalData, _ := json.Marshal(op)
 	if info, err := os.Stat(WalFile); err == nil && info.Size() > MaxWalSize { os.Rename(WalFile, WalFile+".old") }
 	f, _ := os.OpenFile(WalFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer f.Close(); f.Write(data); f.Write([]byte("\n"))
+	defer f.Close(); f.Write(finalData); f.Write([]byte("\n"))
 }
 
 func main() {

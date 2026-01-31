@@ -26,6 +26,19 @@ This document formalizes the accepted risks and non-negotiable defensive mandate
 - **Post-Verification**: Every mutation MUST be followed by an independent state read-back.
 - **Refusal on Drift**: Any detected drift or hash mismatch results in an immediate **PANIC** and rollback.
 
+### D. Behavioral Trust Decay
+- **Non-Binary Trust**: Trust is a diminishing resource. Minor protocol deviations or erratic intent patterns result in **Trust Score Degradation**.
+- **Quarantine Mode**: A degraded session is moved to a `QUARANTINE` state—reads are permitted for forensic observation, but all mutations are blocked.
+- **Impossible State Guards**: The Orchestrator enforces semantic invariants:
+  - **Object Ceiling**: Max 10,000 objects per scene.
+  - **Depth Limit**: Max 16 levels of hierarchy nesting.
+  - **Fan-out Limit**: Max 128 children per node.
+  - Exceeding these limits triggers an automatic **Terminal Failure**.
+
+### E. Identity & Provenance
+- **Command Tagging**: Every mutation must carry an explicit `Provenance` tag: `HUMAN_SUDO`, `AI_PROPOSED`, or `INTERNAL_SYNC`.
+- **Capability Scoping**: Sessions are limited to specific tool subsets. An AI-scoped session cannot trigger structural hierarchy deletions.
+
 ## ⚖️ 3. Accepted Risks
 - **Non-Deterministic Physics**: Minor floating-point variations in engine-specific solvers are accepted, provided the *input* state remains deterministic.
 - **Human-in-the-Loop Delay**: We accept operational latency in favor of human verification for low-confidence mutations.

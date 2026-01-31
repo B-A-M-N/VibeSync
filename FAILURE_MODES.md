@@ -13,6 +13,7 @@ This document defines the canonical taxonomy of failures within the VibeSync clu
 | **Contract Violation** | Adapter sends malformed JSON/Illegal fields. | Instant **PANIC**; Revoke tokens. | **Manual** |
 | **Security Breach** | Blocked pattern (e.g., `os.system`) detected. | Instant **PANIC**; Quarantine adapter. | **Manual** |
 | **Deadlock** | Heartbeat timeout (>10s). | Trigger **Circuit Breaker**; Halt. | **Manual** |
+| **Trust Depletion** | Excessive minor violations/rate-limit hit. | Move to **QUARANTINE**; Read-only mode. | **Automatic (Cool-off)** |
 | **Orchestrator Crash** | OS/Process failure. | Replay WAL on restart. | **Automatic** |
 
 ---
@@ -29,7 +30,23 @@ This document defines the canonical taxonomy of failures within the VibeSync clu
 
 ---
 
-## 🟦 3. Determinism Escalation
+## 🟦 3. Adapter Failure Protocols
+VibeSync enforces a symmetric failure policy across all connected engines.
+
+- **Source Failure (e.g., Blender Crash during Export)**:
+  - Orchestrator halts the pipeline immediately.
+  - Target engine (Unity) is notified to purge the current transaction sandbox.
+  - The object is marked `DIRTY` in the global ID map.
+- **Target Failure (e.g., Unity Crash during Import)**:
+  - Orchestrator broadcasts a `ROLLBACK` to the Source.
+  - Handshake is revoked; session must be re-initialized.
+- **Retry & Backoff**:
+  - Transient network errors are retried **3 times** with exponential backoff (100ms -> 400ms -> 1600ms).
+  - Permanent errors (e.g., `FORBIDDEN_PATH`) trigger an immediate **QUARANTINE**.
+
+---
+
+## 🟦 4. Determinism Escalation
 *Definition: Protocol for when the "Mathematical Truth" of the scene is in doubt.*
 
 1.  **Halt**: If a hash mismatch occurs, the Orchestrator **MUST NOT** attempt to "fix" the data.

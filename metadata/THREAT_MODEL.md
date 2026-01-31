@@ -5,15 +5,18 @@ This document defines the security surface of the VibeSync cluster. Security is 
 ---
 
 ## 🏗️ I. Identity & Authentication
-- **Threat**: Spoofed adapters or session hijacking.
+- **Threat**: Spoofed adapters, session hijacking, or request replay.
 - **Mitigation**: 
   - **Version Pinning**: Refusal on minor build drift.
   - **Trust Rotation**: Bootstrap secrets are exchanged for ephemeral session tokens during handshake.
+  - **HMAC-SHA256 Signing**: Every request is signed with the session token; tampering or spoofing results in immediate rejection.
+  - **Anti-Replay Timestamps**: Strict 5s TTL on all requests to prevent interception and replay.
   - **Mutual Auth**: Orchestrator challenges the Engine; Engine must return a hashed nonce.
 
 ## ⚖️ II. Authorization & Authority
-- **Threat**: Privilege creep or unauthorized "while-I'm-here" mutations.
+- **Threat**: Privilege creep, unauthorized "while-I'm-here" mutations, or endpoint injection.
 - **Mitigation**:
+  - **Path Whitelisting**: Adapters reject any HTTP path not explicitly defined in the protocol.
   - **Intent Scoping**: Permissions are limited to the UUIDs declared in the `SubmitIntent` envelope.
   - **Signed Overrides**: Human "sudo" access requires a cryptographic key and a reason string.
 

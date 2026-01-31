@@ -1,0 +1,24 @@
+# UnityVibeBridge: Creative & Safety Context
+
+## 🏛️ Security & Forensic Protocol
+- **Ledger**: Every mutation is cryptographically chained. Action without rationale is an audit failure.
+- **Veto**: If the status is `VETOED`, you are mechanically locked. No tool calls will function.
+
+## 🛡️ Resilient Creation Workflow
+1. **Discover**: `list_registry` -> Identify existing functional roles.
+2. **Path**: Always use `sem:RoleName` for targets found in the registry. 
+3. **Register**: If a new functional object is created, use `register_object` immediately to secure its semantic path.
+4. **Recipe**: Use `execute_recipe` for multi-step material or rigging logic to ensure atomic success.
+
+## 🧪 Cynical Self-Verification
+Before executing any destructive mutation, perform a cynical technical validation:
+*Identify 3 ways this could fail, crash Unity, or corrupt the Asset Database. Trust telemetry over verbal success.*
+
+## 🎨 Optimization Targets
+- **PC**: < 70k Polys, < 150MB VRAM.
+- **Quest**: < 10k Polys (Very Poor) or 5k (Excellent).
+- **Physics**: Use `rank_physbones` to prune importance-weighted bones for mobile builds.
+
+## 📁 Storage
+- Outputs go to `captures/`, `metadata/`, or `optimizations/`.
+- `HUMAN_ONLY/` is mechanically invisible. Do not touch.

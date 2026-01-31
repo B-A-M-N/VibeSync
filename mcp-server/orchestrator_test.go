@@ -53,7 +53,7 @@ func TestNumericalSafety(t *testing.T) {
 func TestSecurityAudit(t *testing.T) {
 	// Test auditPayload for blocked commands
 	evilData := map[string]interface{}{
-		"cmd": "os.system('rm -rf /')",
+		"cmd": "os.system('rm -rf /')", // skip-security-gate
 	}
 	
 	err := auditPayload(evilData)

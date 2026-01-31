@@ -23,6 +23,9 @@ using System.Threading;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
+using System.Security.Cryptography;
+using System.Linq;
+
 [InitializeOnLoad]
 public static class VibeBridgeServer
 {
@@ -36,13 +39,29 @@ public static class VibeBridgeServer
     private const string BOOTSTRAP_TOKEN = "VIBE_UNITY_BOOTSTRAP_SECRET";
     private static readonly object _stateLock = new object();
 
+    private static readonly HashSet<string> _pathWhitelist = new HashSet<string> {
+        "/health", "/handshake", "/metrics", "/object/lock", "/panic", 
+        "/validate", "/state/get", "/commit", "/rollback", 
+        "/transform/set", "/material/update", "/object/mutate",
+        "/selection/set", "/camera/set", "/camera/get"
+    };
+
     [Serializable]
-    private class HandshakePayload { public string new_token; }
+    private class HandshakePayload { public string new_token; public string challenge; }
 
     static VibeBridgeServer()
     {
         EditorApplication.update += OnUpdate;
         StartServer();
+    }
+
+    private static string ComputeHMAC(string key, string data)
+    {
+        using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key)))
+        {
+            byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
+            return BitConverter.ToString(hash).Replace("-", "").ToLower();
+        }
     }
 
     private static void StartServer()
@@ -52,7 +71,7 @@ public static class VibeBridgeServer
             if (_listener != null) StopServer();
             
             _listener = new HttpListener();
-            _listener.Prefixes.Add("http://localhost:8085/");
+            _listener.Prefixes.Add("http://127.0.0.1:8085/");
             _listener.Start();
             _listenerThread = new Thread(Listen);
             _listenerThread.Start();
@@ -97,6 +116,13 @@ public static class VibeBridgeServer
         var request = context.Request;
         var response = context.Response;
 
+        // 1. Path Whitelist Check
+        if (!_pathWhitelist.Contains(request.Url.AbsolutePath))
+        {
+            SendResponse(response, "{\"error\":\"Forbidden Path\"}", HttpStatusCode.Forbidden);
+            return;
+        }
+
         // Health check - allowed without token
         if (request.Url.AbsolutePath == "/health")
         {
@@ -107,54 +133,87 @@ public static class VibeBridgeServer
             return;
         }
 
-        // Token Validation
+        // 2. Token & Security Header Validation
         string receivedToken = request.Headers["X-Vibe-Token"];
         string receivedGenStr = request.Headers["X-Vibe-Generation"];
+        string receivedSig = request.Headers["X-Vibe-Signature"];
+        string receivedTime = request.Headers["X-Vibe-Timestamp"];
         
         bool isHandshake = request.Url.AbsolutePath == "/handshake";
-        bool isAuth;
+        string currToken;
         int currGen;
 
         lock (_stateLock)
         {
-            isAuth = (receivedToken == _sessionToken && _sessionToken != "") || (receivedToken == BOOTSTRAP_TOKEN);
+            currToken = _sessionToken != "" ? _sessionToken : BOOTSTRAP_TOKEN;
             currGen = _currentGeneration;
         }
 
-        if (!isAuth)
+        if (receivedToken != currToken)
         {
             SendResponse(response, "{\"error\":\"Unauthorized\"}", HttpStatusCode.Unauthorized);
             return;
         }
 
+        // 3. Anti-Replay: Timestamp Check (5s window)
+        if (long.TryParse(receivedTime, out long ts))
+        {
+            long now = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds;
+            if (Math.Abs(now - ts) > 5)
+            {
+                SendResponse(response, "{\"error\":\"Request Expired\"}", HttpStatusCode.Forbidden);
+                return;
+            }
+        }
+        else if (!isHandshake)
+        {
+            SendResponse(response, "{\"error\":\"Missing Timestamp\"}", HttpStatusCode.BadRequest);
+            return;
+        }
+
+        // 4. Generation Drift Check
         if (!isHandshake && int.TryParse(receivedGenStr, out int receivedGen) && receivedGen != currGen)
         {
             SendResponse(response, "{\"error\":\"Generation Drift\"}", HttpStatusCode.Conflict);
             return;
         }
 
+        // Read Body for Signature and Logic
+        string body = "";
+        using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+        {
+            body = reader.ReadToEnd();
+        }
+
+        // 5. HMAC Signature Verification
+        if (!isHandshake)
+        {
+            string sigData = receivedTime + "|" + request.HttpMethod + "|" + request.Url.AbsolutePath + "|" + body;
+            string expectedSig = ComputeHMAC(currToken, sigData);
+            if (receivedSig != expectedSig)
+            {
+                SendResponse(response, "{\"error\":\"Invalid Signature\"}", HttpStatusCode.Forbidden);
+                return;
+            }
+        }
+
         if (isHandshake)
         {
-            using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
+            try 
             {
-                string body = reader.ReadToEnd();
-                try 
+                var payload = JsonUtility.FromJson<HandshakePayload>(body);
+                lock (_stateLock)
                 {
-                    var payload = JsonUtility.FromJson<HandshakePayload>(body);
-                    lock (_stateLock)
+                    _currentGeneration++;
+                    if (payload != null && !string.IsNullOrEmpty(payload.new_token))
                     {
-                        _currentGeneration++;
-                        if (payload != null && !string.IsNullOrEmpty(payload.new_token))
-                        {
-                            _sessionToken = payload.new_token;
-                        }
+                        _sessionToken = payload.new_token;
                     }
                 }
-                catch (Exception) { /* Invalid JSON */ }
+                string responseJson = "{\"status\":\"OK\", \"engine_version\":\"" + Application.unityVersion + "\", \"capabilities\":[\"transform\", \"mesh\", \"material\", \"locking\", \"metrics\"], \"response\":\"VIBE_HASH_" + (JsonUtility.FromJson<HandshakePayload>(body).challenge ?? "UNK") + "\"}";
+                SendResponse(response, responseJson, HttpStatusCode.OK);
             }
-
-            string responseJson = "{\"status\":\"OK\", \"engine_version\":\"" + Application.unityVersion + "\", \"capabilities\":[\"transform\", \"mesh\", \"material\", \"locking\", \"metrics\"]}";
-            SendResponse(response, responseJson, HttpStatusCode.OK);
+            catch (Exception) { SendResponse(response, "{\"error\":\"Invalid Handshake\"}", HttpStatusCode.BadRequest); }
             return;
         }
 
@@ -219,12 +278,7 @@ public static class VibeBridgeServer
         }
 
         // Marshal other requests to the main thread
-        using (var reader = new StreamReader(request.InputStream, request.ContentEncoding))
-        {
-            string body = reader.ReadToEnd();
-            string path = request.Url.AbsolutePath;
-            _mainThreadQueue.Enqueue(() => HandleEngineCommand(path, body));
-        }
+        _mainThreadQueue.Enqueue(() => HandleEngineCommand(request.Url.AbsolutePath, body));
 
         SendResponse(response, "{\"status\":\"queued\"}", HttpStatusCode.Accepted);
     }

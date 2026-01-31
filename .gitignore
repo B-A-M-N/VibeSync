@@ -6,6 +6,9 @@ mcp-server/state.json
 mcp-server/wal.jsonl
 mcp-server/events.jsonl
 
+# Private Human Context
+HUMAN_ONLY/
+
 # Monetization (Internal Strategy)
 metadata/MONETIZATION_STRATEGY.md
 

@@ -18,9 +18,11 @@ import http.server
 import threading
 from queue import Queue
 import time
+import hmac
+import hashlib
 
 # Configuration
-HOST = "localhost"
+HOST = "127.0.0.1"
 PORT = 22000
 BOOTSTRAP_TOKEN = "VIBE_BLENDER_BOOTSTRAP_SECRET" # Unique token for Blender
 
@@ -30,9 +32,24 @@ _current_generation = 0
 _command_queue = Queue()
 _state_lock = threading.Lock()
 
+_path_whitelist = {
+    "/health", "/handshake", "/metrics", "/object/lock", "/panic", 
+    "/preflight/run", "/export", "/camera/set", "/camera/get",
+    "/selection/set", "/material/update", "/mesh/mutate", "/state/get",
+    "/playback/control"
+}
+
+def compute_hmac(key, data):
+    return hmac.new(key.encode(), data.encode(), hashlib.sha256).hexdigest()
+
 class VibeRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        # ... (health and camera/get remain the same)
+        # Path Whitelist Check
+        if self.path not in _path_whitelist:
+            self.send_response(403)
+            self.end_headers()
+            return
+
         if self.path == "/health":
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -51,28 +68,56 @@ class VibeRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self):
-        # Token Validation
+        # 1. Path Whitelist Check
+        if self.path not in _path_whitelist:
+            self.send_response(403)
+            self.end_headers()
+            return
+
+        # Token & Security Header Validation
         received_token = self.headers.get("X-Vibe-Token")
         received_gen = self.headers.get("X-Vibe-Generation")
+        received_sig = self.headers.get("X-Vibe-Signature")
+        received_time = self.headers.get("X-Vibe-Timestamp")
+        
+        is_handshake = self.path == "/handshake"
         
         with _state_lock:
-            is_authenticated = (received_token == _session_token and _session_token != "") or \
-                              (received_token == BOOTSTRAP_TOKEN)
+            curr_token = _session_token if _session_token != "" else BOOTSTRAP_TOKEN
             curr_gen = _current_generation
 
-        if not is_authenticated:
+        if received_token != curr_token:
             self.send_response(401)
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Unauthorized"}).encode())
             return
 
-        # Generation Validation
-        if received_gen and self.path != "/handshake":
+        # 2. Anti-Replay: Timestamp Check (5s window)
+        try:
+            if received_time:
+                ts = int(received_time)
+                now = int(time.time())
+                if abs(now - ts) > 5:
+                    self.send_response(403)
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Request Expired"}).encode())
+                    return
+            elif not is_handshake:
+                self.send_response(400)
+                self.end_headers()
+                return
+        except ValueError:
+            self.send_response(400)
+            self.end_headers()
+            return
+
+        # 3. Generation Validation
+        if received_gen and not is_handshake:
             try:
                 if int(received_gen) != curr_gen:
                     self.send_response(409)
                     self.end_headers()
-                    self.wfile.write(json.dumps({"error": "Generation Drift", "engine": curr_gen, "received": received_gen}).encode())
+                    self.wfile.write(json.dumps({"error": "Generation Drift"}).encode())
                     return
             except ValueError:
                 self.send_response(400)
@@ -82,17 +127,17 @@ class VibeRequestHandler(http.server.BaseHTTPRequestHandler):
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode() if content_length > 0 else ""
 
-        # Validate JSON if body exists
-        if body:
-            try:
-                json.loads(body)
-            except json.JSONDecodeError:
-                self.send_response(400)
+        # 4. HMAC Signature Verification
+        if not is_handshake:
+            sig_data = f"{received_time}|{self.command}|{self.path}|{body}"
+            expected_sig = compute_hmac(curr_token, sig_data)
+            if received_sig != expected_sig:
+                self.send_response(403)
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": "Invalid JSON"}).encode())
+                self.wfile.write(json.dumps({"error": "Invalid Signature"}).encode())
                 return
 
-        if self.path == "/handshake":
+        if is_handshake:
             with _state_lock:
                 global _current_generation, _session_token
                 _current_generation += 1

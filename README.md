@@ -156,6 +156,12 @@ Requires **Maintenance Contributions** or a **License Fee** for revenue-generati
 
 ---
 
+## 🔗 Related Projects
+*   [**unityvibebridge**](https://github.com/B-A-M-N/unityvibebridge) – The standalone Unity adapter and kernel for AI-driven editor orchestration.
+*   [**BlenderVibeBridge**](https://github.com/B-A-M-N/BlenderVibeBridge) – The standalone Blender adapter and MCP server for creative automation.
+
+---
+
 ## 📖 User Guides & Learning
 New to VibeSync or AI-assisted creative workflows? Start here:
 *   [**AI for Humans: The Beginner's Manual**](HUMAN_ONLY/FOR_BEGINNERS.md) – Essential reading on AI psychosis, cognition gaps, and how to work safely with AI co-pilots.

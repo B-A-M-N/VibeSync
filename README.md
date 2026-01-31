@@ -135,6 +135,7 @@ VibeSync is built on a foundation of distributed systems rigor and zero-trust se
 - 🤖 [**Multi-Agent Architecture**](HUMAN_ONLY/MULTI_AGENT_ARCHITECTURE.md): The "Tri-Silo" model for high-scale isolated automation.
 - ⚖️ [**Absolute Invariance Contract**](metadata/INVARIANCE_CONTRACT.md): Mechanical, Contextual, and Semantic safety locks.
 - ⚖️ [**Second-Order Invariants**](metadata/SECOND_ORDER_INVARIANTS.md): Production-scale axioms for load, latency, and scale.
+- ⚖️ [**Human Governance Policy**](HUMAN_ONLY/GOVERNANCE_POLICY.md): The "Fourth Order" of invariance and override protocols.
 - 📜 [**Bridge Contract**](BRIDGE_CONTRACT.md): Absolute authority boundaries and operational guarantees.
 - ⚖️ **[Formal Guarantees](metadata/FORMAL_GUARANTEES.md)**: The "Rules of Reality" and causality logic.
 - 🔄 **[Master Procedural Flow](metadata/PROCEDURAL_FLOW.md)**: The strict, step-by-step lifecycle for deterministic syncing.

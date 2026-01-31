@@ -42,8 +42,10 @@ if command -v ufw > /dev/null; then
     # Allow bridge communication on loopback
     ufw allow in on lo
     # Explicitly allow the bridge ports on localhost
-    ufw allow from 127.0.0.1 to any port 8085 proto tcp  # Unity
-    ufw allow from 127.0.0.1 to any port 22000 proto tcp # Blender
+    ufw allow from 127.0.0.1 to any port 8085 proto tcp   # Unity
+    ufw allow from 127.0.0.1 to any port 22000 proto tcp  # Blender
+    ufw allow from 127.0.0.1 to any port 8000:30000 proto tcp # Multi-Engine Multiplexer Range
+    echo "UFW configured for multi-engine sync. Range: 8000-30000."
     echo "UFW configured. Reminder: 'ufw enable' to activate."
 else
     echo "UFW not found. Skipping firewall configuration."

@@ -1,5 +1,7 @@
 # 🌌 VibeSync: Atomic Unity ↔ Blender Sync
 
+**VibeSync is a live bridge that synchronizes Blender and Unity scenes automatically, safely, and in real time.**
+
 **VibeSync is middleware that synchronizes object transforms, materials, and scene state between Blender and Unity with safety constraints and rollback support.**
 
 > [!WARNING]
@@ -8,6 +10,28 @@
 > [!IMPORTANT]
 > **VibeSync is a transactional sync bridge that keeps Blender and Unity state consistent in real time, without corrupting either application.**
 > It allows transforms, assets, and scene state to be mirrored across tools while enforcing atomic updates, rollback, and crash safety.
+
+---
+
+## 🎨 Why VibeSync? (The Artist's Perspective)
+If you've ever spent hours manually exporting FBX files, fixing materials that didn't sync, or realizing your Unity scene is out of sync with your Blender model, VibeSync is for you.
+*   **No more "Export/Import" hell**: Move a chair in Blender, and it moves in Unity instantly.
+*   **Safe by Design**: If something goes wrong (like a crash), VibeSync automatically protects your work by rolling back to the last safe state.
+*   **Material Harmony**: Change a color in Blender, and see it update in Unity immediately.
+
+## 🔄 Visual Workflow (How it feels)
+```mermaid
+sequenceDiagram
+    participant B as 🧊 Blender (Artist)
+    participant O as 🧠 VibeSync (Brain)
+    participant U as 🎮 Unity (Engine)
+
+    B->>O: "I moved the Crate to [1, 0, 5]"
+    O->>O: Check if move is safe & valid
+    O->>U: "Update Crate position"
+    U-->>O: "Success! Crate moved."
+    O-->>B: "Sync Complete ✅"
+```
 
 ---
 
@@ -67,10 +91,13 @@ For a complete matrix of implemented and planned capabilities, including technic
 ---
 
 ## 🏛️ Architecture: Brain and Limbs
+**TL;DR:** VibeSync uses a central "Brain" (the Orchestrator) to coordinate two "Dumb Limbs" (the Adapters in Unity and Blender). This ensures that one tool doesn't accidentally break the other.
+
 The system is split into two distinct layers to ensure absolute pipeline safety:
 1.  **The Orchestrator (Go)**: The "Brain." The central authority handling IPC (Inter-Process Communication), **Strict Serializability** (ensuring commands happen in a perfect, one-at-a-time order), and the Write-Ahead Log (WAL).
 2.  **The Adapters (C#/Python)**: The "Dumb Limbs." Isolated, untrusted endpoints for Unity and Blender that execute raw mutations.
 
+*   *See the **[Ecosystem Summary](HUMAN_ONLY/ECOSYSTEM_SUMMARY.md)** for a professional overview of VibeSync, UnityVibeBridge, and BlenderVibeBridge.*
 *   *See the **[Architecture Blueprint](metadata/ARCHITECTURE_BLUEPRINT.md)** for a visual map of the system.*
 *   *See the **[Adapter Contract](metadata/ADAPTER_CONTRACT.md)** for implementation invariants.*
 
@@ -94,6 +121,8 @@ The system is split into two distinct layers to ensure absolute pipeline safety:
 ---
 
 ## 🛡️ The Iron Box: Security & Hardening
+**TL;DR:** We treat your project like a high-security vault. Every command is checked for safety, signed with "digital keys," and monitored by a "deadman switch" that locks the system if it detects a freeze or a crash.
+
 VibeSync treats editors as hostile, non-deterministic environments.
 
 | **Capability** | **Feature** |
@@ -109,6 +138,8 @@ VibeSync treats editors as hostile, non-deterministic environments.
 ---
 
 ## 🧠 AI Safety & Adversarial Robustness
+**TL;DR:** When an AI is helping you, VibeSync makes sure it follows strict rules. The AI can't "guess" or "ignore" errors; if it isn't 100% sure the action is safe, it must stop and ask for your permission.
+
 VibeSync treats the AI Orchestrator as a security-critical component. To prevent "autonomy expansion" and "hallucinated compliance," the system enforces a strict **Clinical Persona** and **Adversarial Defense** layer.
 
 ### 🛡️ The "Clinical" Protocol (Psychological Defense)
@@ -123,6 +154,8 @@ The Orchestrator is hardened against prompt injection and malicious asset payloa
 ---
 
 ## ⚖️ Formal Guarantees (The Rules of Reality)
+**TL;DR:** We guarantee that your data stays consistent. Commands always happen in the right order, and if the system loses track of time, it uses a logical "counter" to keep everything straight.
+
 VibeSync operates on a foundation of distributed systems rigor. For a full breakdown, see **[Formal Guarantees & Non-Guarantees](metadata/FORMAL_GUARANTEES.md)**.
 
 *   **Strict Serializability**: All intents are strictly linearized; mutations never interleave or happen out of order.

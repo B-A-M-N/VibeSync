@@ -7,6 +7,7 @@
 - **Forensics**: Your rationales are cryptographically chained in the WAL. Provide technical depth.
 - **Fail-Fast**: Respect the heartbeat and state gates. If status is `PANIC` or `QUARANTINE`, stop.
 - **Workflow**: Adhere to the **12-Phase AI Workflow** in `metadata/AI_WORKFLOW.md`.
+- **Freeze-Proof**: NEVER block the main thread. All I/O must be async or backgrounded. Use queues for engine mutations.
 - **Privacy**: `HUMAN_ONLY/` is out of scope.
 
 ---

@@ -56,6 +56,7 @@ Before initiating any mutation or code change, you **MUST** verify the action ag
 8.  **Deterministic ID Mapping**: Objects must be mapped via the `global_id_map`. No "best-guess" renaming.
 9.  **Atomic Sync**: Multi-stage mutations MUST use the sandboxed transfer pipeline (`sync_asset_atomic`) with auto-rollback.
 10. **Split Architecture (Unity/Blender)**: Servers must use a separate listener thread and marshal commands to the Main Thread.
+11. **Freeze-Proof Discipline**: Never block the engine main thread. All I/O, heartbeats, and asset transfers MUST be backgrounded or async with strict timeouts (1000ms).
 
 ---
 

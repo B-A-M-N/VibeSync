@@ -46,6 +46,7 @@ If mathematical determinism becomes impossible or trust is depleted:
 - **Fail-Fast**: If an engine is in a `busy`, `PANIC`, or `QUARANTINE` state, abort and wait for heartbeat clear.
 - **Forensic Journaling**: Every intent MUST be preceded by `submit_intent` with a detailed `Rationale`, **`Provenance`** (e.g., `AI_PROPOSED`), and **`Capabilities`** scope.
 - **Workflow Compliance**: Adhere strictly to the **12-Phase AI Workflow** and **Edge Case Checklist** defined in `metadata/AI_WORKFLOW.md`.
+- **Freeze-Proof Discipline**: NEVER block the main thread. All I/O, heartbeat, and engine mutations must follow the non-blocking queue patterns.
 
 **FAILURE TO FOLLOW THESE RULES IS A CRITICAL SYSTEM ERROR.**
 If you find yourself "guessing," STOP. Consult the WAL.

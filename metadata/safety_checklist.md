@@ -12,6 +12,7 @@
 
 ## 3. Concurrency & Performance
 - [ ] **Hierarchy-Aware Locking**: Lock parent nodes when children are undergoing structural changes.
+- [x] **Freeze-Proof Marshalling**: Ensure all engine mutations are enqueued to the Main Thread from async listeners.
 - [ ] **Delta Transform Sync**: Only broadcast changes exceeding a precision threshold (e.g., 0.0001).
 - [ ] **Operation Journaling**: Maintain a write-ahead log (WAL) to replay missed commands after a crash.
 

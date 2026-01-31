@@ -45,4 +45,32 @@ VibeSync supports custom extensions via the **Payload Injection** system.
 
 ---
 
+## 🛠️ 6. API Schema Specification
+
+All adapters must implement these JSON endpoints via HTTP POST/GET.
+
+### A. `/handshake` (POST)
+**Request:**
+```json
+{ "version": "v0.4.0", "new_token": "uuid-string", "challenge": "nonce-string" }
+```
+**Response:**
+```json
+{ "status": "OK", "engine_version": "2022.3.x", "capabilities": ["mesh", "transform"], "response": "VIBE_HASH_[challenge]" }
+```
+
+### B. `/health` (GET)
+**Response:**
+```json
+{ "status": "ok|busy", "generation": 12 }
+```
+
+### C. `/transform/set` (POST)
+**Request:**
+```json
+{ "id": "uuid", "transform": { "pos": [x,y,z], "rot": [x,y,z,w], "sca": [x,y,z] }, "generation": 12 }
+```
+
+---
+
 *VibeSync: Modular Reality.*

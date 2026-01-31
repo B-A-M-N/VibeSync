@@ -12,7 +12,7 @@
 
 ## 🧪 Cynical Self-Verification
 Before executing any mutation, perform a cynical technical validation:
-*Identify 3 ways this could fail based on the **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.*
+*Identify 3 ways this could fail based on the **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`. Ensure the operation is Freeze-Proof (Async I/O, No Main-Thread Blocking).*
 
 ## 📁 Storage
 - Local state persists in `.vibesync/`.

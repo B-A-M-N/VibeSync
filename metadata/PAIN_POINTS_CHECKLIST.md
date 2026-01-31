@@ -5,6 +5,7 @@ This checklist is designed to prevent common AI-driven failures in Blender and U
 ## 🛡️ 1. Safety & Stability
 - [x] **No Ghost Mutations:** Every operation is gated by `submit_intent` and `Rationale`.
 - [ ] **Crash-Proofing:** Are long-running or heavy operations gated by performance checks?
+- [x] **Freeze-Proofing:** Enforced async I/O and non-blocking heartbeat loops.
 - [ ] **Undo Reliability:** Can every operation be reverted with a single `Ctrl+Z`?
 - [x] **Atomic Recovery:** Implemented `sync_asset_atomic` with auto-rollback on hash mismatch.
 

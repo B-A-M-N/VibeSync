@@ -87,4 +87,45 @@ We follow **Conventional Commits**:
 *   `refactor:` Code change that neither fixes a bug nor adds a feature.
 
 ---
+
+
+
+## 🧪 Technical Testing & Development
+
+
+
+### 1. Running the Test Suite
+
+We use standard Go testing. Ensure the orchestrator is not running on the ports you are testing.
+
+```bash
+
+cd mcp-server
+
+go test -v ./...
+
+```
+
+
+
+### 2. Golden Set Regression Testing
+
+When tuning thresholds (like precision drift), we use **Golden Set** tests. These use hardcoded log data from `tests/data/` to ensure new changes don't break existing deterministic behavior. 
+
+
+
+### 3. Forensic Debugging
+
+If a transaction fails, use the **Forensic Replay** tool to reconstruct the state from the Write-Ahead Log (WAL):
+
+```bash
+
+go run cmd/forensic/main.go --tid [transaction_id]
+
+```
+
+
+
+---
+
 **Welcome to the Iron Box. Build it strong.**

@@ -57,4 +57,25 @@ Adapters operating in single-threaded engines (Unity, Blender) **MUST** use a **
 Every mutation MUST be followed by an independent `/state/get` call from the Orchestrator to verify the result. Adapters must ensure that `/state/get` returns the *actual* engine state, not the last commanded state.
 
 ---
+
+## 📐 4. Coordinate & Unit Translation (The "Two Gods" Protocol)
+To ensure seamless sync, adapters **MUST** perform the following basis conversions:
+
+| Property | Blender Basis (Right-Hand, Z-Up) | Unity Basis (Left-Hand, Y-Up) | Conversion Formula |
+| :--- | :--- | :--- | :--- |
+| **Up Vector** | `[0, 0, 1]` | `[0, 1, 0]` | `Y_unity = Z_blender`, `Z_unity = Y_blender` |
+| **Scale** | 1.0 (Metric) | 1.0 (Metric) | Ensure 1:1 unit matching. |
+| **Rotation** | Euler / Quaternion | Quaternion | Invert `X` and `W` components for hand-flip. |
+
+---
+
+## 🔒 5. Privacy & "Human-Only" Marking
+Adapters must support **AI-Invisibility** via the following mechanisms:
+
+1.  **UUID Prefixing**: Any object with a UUID starting with `h-` (e.g., `h-1234...`) is **STRICTLY FORBIDDEN** from being sent to the AI. The adapter must redact these from telemetry.
+2.  **Tagging**:
+    - **Unity**: Objects tagged with `HumanOnly` are ignored by the bridge.
+    - **Blender**: Objects in a Collection named `HUMAN_ONLY` are ignored by the bridge.
+
+---
 *Copyright (C) 2026 B-A-M-N*

@@ -164,6 +164,7 @@
 * Cross-system versioning/schema checks are mandatory
 * Automation knows when to pause or stop
 * No Python/Unity object references are persisted beyond safe boundaries
+* **Freeze-Proof Discipline**: Never block the main thread; use async I/O and queue-based mutations exclusively.
 
 ---
 *Copyright (C) 2026 B-A-M-N*

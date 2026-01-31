@@ -168,6 +168,17 @@
 
 ---
 
+## ❄️ FREEZE-PROOF DISCIPLINE (STRICT)
+
+1. **Never block the main thread**: All heartbeat, network I/O, and file transfers MUST be backgrounded or async.
+2. **Timeouts & Watchdogs**: Wrap every external call in `try/catch` with strict 1000ms timeouts.
+3. **Queue-Based Mutation**: Background threads must NEVER modify Unity/Blender objects directly. Use `MainThreadDispatcher` (Unity) or `bpy.app.timers` (Blender) via thread-safe queues.
+4. **File Integrity**: Use **Atomic Swap** (write temp -> verify -> rename) for asset transfers to avoid engine file locks.
+5. **Log Throttling**: Max 1 log/sec for repetitive tasks (heartbeat) to prevent console freeze.
+6. **Conflict Checking**: Only push changes if the source version is newer than the target.
+
+---
+
 ## 🛑 COMPREHENSIVE EDGE CASE CHECKLIST
 
 1. **Duplicate UUIDs**: Detect immediately, regenerate for newest, persist.

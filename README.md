@@ -98,6 +98,7 @@ VibeSync is built on a foundation of distributed systems rigor and zero-trust se
 - 🤖 **[AI Workflow Instructions](metadata/AI_WORKFLOW.md)**: Pain-point focused procedural rules for AI bridge operators.
 - ⚖️ **[Formal Guarantees](metadata/FORMAL_GUARANTEES.md)**: The "Rules of Reality" and causality logic.
 - 🔄 **[Master Procedural Flow](metadata/PROCEDURAL_FLOW.md)**: The strict, step-by-step lifecycle for deterministic syncing.
+- ❄️ **[Freeze-Proof Guide](metadata/FREEZE_PROOF_GUIDE.md)**: Critical technical patterns to prevent engine deadlocks and hangs.
 
 ---
 

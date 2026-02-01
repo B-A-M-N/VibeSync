@@ -42,4 +42,26 @@ To achieve commercial-grade reliability, VibeSync employs:
 - **License Compliance**: Continuous auditing ensures all dependencies (MIT/Apache 2.0) are ready for commercial redistribution.
 
 ---
+
+## 🔒 10. Triple-Lock Invariance System (Absolute Governance)
+
+To achieve absolute invariance and prevent "Optimistic Bypass," VibeSync implements three nested safety locks as defined in the **[Absolute Invariance Contract](INVARIANCE_CONTRACT.md)**:
+
+### 1. Mechanical Invariance (The Ground Truth Lock)
+The `execute_governed_mutation` tool doesn't just send a command; it automatically waits for the engine response and performs an independent state read-back before returning success to the AI.
+
+### 2. Contextual Invariance (The Forensic Feed)
+Every tool response is "Force-Fed" with a **Forensic Report**, including the last 3 lines of the WAL, engine health flags, and generation counters. This ensures errors are always in the AI's immediate context.
+
+### 3. Semantic Invariance (The Proof of Work)
+The `commit_atomic_operation` tool is "Hard Gated." It will mechanically refuse to execute unless the AI provides a valid `ProofOfWork` string summarizing the evidence found in the Forensic Report.
+
+---
+
+## 🔗 Security Resources
+- [**Security Gate Script**](../security_gate.py): The pre-execution auditor.
+- [**Iron Box Constraints**](../AI_ENGINEERING_CONSTRAINTS.md): The formal rules governing all codebase changes.
+- [**Threat Model**](THREAT_MODEL.md): Detailed analysis of potential attack vectors.
+
+---
 *Copyright (C) 2026 B-A-M-N*

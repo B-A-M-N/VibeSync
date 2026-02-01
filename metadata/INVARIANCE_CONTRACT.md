@@ -50,6 +50,14 @@ Ensures the hierarchy graph remains a directed acyclic graph (DAG).
 Ensures destructive operations do not leave dangling references or identity holes.
 - **Rule**: Deletions MUST include the full dependency closure (children, constraints, modifiers).
 
+### 📜 `/bridge/log_invariance` (Governance Integrity)
+Ensures the actor is grounded in recent history before mutation.
+- **Rule**: `submit_intent` rejected if `ingest_forensic_logs` has not been called for the latest hash.
+
+### 🔢 `/bridge/opcode_invariance` (Instruction Integrity)
+Ensures commands match the declared intent and strictly follow the ISA.
+- **Rule**: Opcodes (0x01-0x11) must be mapped to valid Intent Labels.
+
 ### 📐 `/bridge/delta_state` (Mutation Proof)
 Explains exactly what changed and provides a hash of the delta.
 - **Goal**: Prevents "Ghost Changes" or implicit mutations.

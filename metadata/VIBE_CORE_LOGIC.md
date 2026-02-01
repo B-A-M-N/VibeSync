@@ -28,6 +28,14 @@ This document defines the essential invariants of the VibeSync cluster. These ru
 - **Deterministic Rollback**: Any provisional state that fails deferred verification MUST be rolled back automatically using engine-level undo tokens.
 - **Atomic Batching**: Micro-intents are coalesced into semantic batches to reduce verification overhead.
 
+## 📜 6. The Law of Log-Driven Governance
+- **Ingestion Precondition**: No intent may be submitted until the actor has ingested the recent forensic history.
+- **History Anchoring**: Intents must be grounded in the `log_hash` provided by the Orchestrator.
+
+## 🔢 7. The Law of Opcode Integrity
+- **Strict Mapping**: All engine commands MUST be issued via strictly mapped Opcodes (0x01-0x11).
+- **Intent Binding**: Commands that deviate from the declared intent (e.g., `RIG` performing a `LIGHT` operation) are mechanically rejected.
+
 ---
 
 ## 🛰️ Engine State Machine

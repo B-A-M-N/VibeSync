@@ -56,7 +56,13 @@ All adapters must implement these JSON endpoints via HTTP POST/GET.
 ```
 **Response:**
 ```json
-{ "status": "OK", "engine_version": "2022.3.x", "capabilities": ["mesh", "transform"], "response": "VIBE_HASH_[challenge]" }
+{ 
+  "status": "OK", 
+  "engine_version": "2022.3.x", 
+  "capabilities": ["mesh", "transform"], 
+  "unit_settings": { "system": "Metric", "scale_length": 1.0 },
+  "response": "VIBE_HASH_[challenge]" 
+}
 ```
 
 ### B. `/health` (GET)

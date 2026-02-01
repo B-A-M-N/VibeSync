@@ -123,19 +123,21 @@
     * Reject stale or mismatched data
 33. **Deferred Hash Matching**: For Speculative/Provisional intents, perform background hash verification.
 34. **Finalization**: If verified, promote `Provisional → Finalized` in the WAL and clear engine tags.
-35. **Rollback**: If verification fails or times out, issue an immediate `ROLLBACK` to the last authoritative state.
-36. Ensure operations are order-independent; buffer events as necessary.
+35. **Ghost Audit**: Every `FINAL` WAL entry triggers an automatic disk-level snapshot (`git commit`) in the `.git_safety` tree.
+36. **Rollback**: If verification fails or times out, issue an immediate `ROLLBACK` to the last authoritative state.
+37. Ensure operations are order-independent; buffer events as necessary.
 
 ---
 
 ## PHASE 9 — PERFORMANCE, BATCHING & WATCHDOG
 
-37. **Intent Batching**: Coalesce micro-intents (e.g., rapid transform updates) into semantic batches (250-500ms window) before verification.
-38. Set operation limits:
+38. **Intent Batching**: Coalesce micro-intents (e.g., rapid transform updates) into semantic batches (250-500ms window) before verification.
+39. **Unit Normalization**: All transform and scale data is normalized to SI Meters (1.0 = 1m) at the batch boundary.
+40. Set operation limits:
     * Max scans per tick
     * Max repair/fix operations per tick
-39. Yield execution to prevent editor freeze
-40. Resume monitoring only in idle states
+41. Yield execution to prevent editor freeze
+42. Resume monitoring only in idle states
 
 ---
 

@@ -36,6 +36,35 @@ const (
 	StateQuarantine EngineState = "QUARANTINE"
 )
 
+type VibeOpcode uint8
+
+const (
+	OpTransform   VibeOpcode = 0x03
+	OpModifier    VibeOpcode = 0x04
+	OpNode        VibeOpcode = 0x05
+	OpMaterial    VibeOpcode = 0x09
+	OpBake        VibeOpcode = 0x0A
+	OpIO          VibeOpcode = 0x0B
+	OpSystem      VibeOpcode = 0x0F
+	OpAudit       VibeOpcode = 0x10
+)
+
+type IntentType string
+
+const (
+	IntentOptimize   IntentType = "OPTIMIZE"
+	IntentRig        IntentType = "RIG"
+	IntentLight      IntentType = "LIGHT"
+	IntentAnimate    IntentType = "ANIMATE"
+	IntentSceneSetup IntentType = "SCENE_SETUP"
+	IntentGeneral    IntentType = "GENERAL"
+)
+
+type VibeUnitSettings struct {
+	System      string  `json:"system"` // Metric, Imperial
+	ScaleLength float64 `json:"scale_length"`
+}
+
 type VibeBaseModel struct {
 	Generation    int    `json:"generation"`
 	SessionID     string `json:"session_id"`
@@ -56,6 +85,9 @@ type IntentEnvelope struct {
 	BudgetMS          int               `json:"budget_ms"`
 	Signature         string            `json:"signature"`
 	BasedOnHashes     map[string]string `json:"based_on_hashes"`
+	Intent            IntentType        `json:"intent"`
+	Opcode            VibeOpcode        `json:"opcode,omitempty"`
+	DryRun            bool              `json:"dry_run,omitempty"`
 }
 
 type VibeState string

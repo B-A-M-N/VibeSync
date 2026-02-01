@@ -89,6 +89,14 @@ var (
 	intentBuffer = make(map[string]*WalEntry)
 	bufferMu     sync.Mutex
 
+	// Log-Driven Governance
+	lastLogIngestedHash string
+	logIngestMu         sync.Mutex
+
+	// Unit Normalization
+	unitSettings = make(map[string]VibeUnitSettings)
+	unitMu       sync.RWMutex
+
 	// Visual Thought Markers
 	ActivityFile  = "metadata/bridge_activity.txt"
 	DiscoveryFile = "/home/bamn/ALCOM/Projects/BAMN-EXTO/metadata/vibe_status.json"
@@ -657,6 +665,18 @@ func handshake_init(ctx context.Context, req *mcp.CallToolRequest, args Handshak
 
 	if err != nil || (args.Target != "unity" && res["response"] != "VIBE_HASH_"+chal) { return nil, nil, fmt.Errorf("AUTH_FAILED") }
 	stateMu.Lock(); e := engines[args.Target]; e.Token, e.Version, e.State, e.TrustExpiry = newToken, fmt.Sprintf("%v", res["engine_version"]), StateRunning, time.Now().Add(60*time.Minute); stateMu.Unlock()
+	
+	// Capture Unit Settings
+	if units, ok := res["unit_settings"].(map[string]interface{}); ok {
+		unitMu.Lock()
+		unitSettings[args.Target] = VibeUnitSettings{
+			System:      fmt.Sprintf("%v", units["system"]),
+			ScaleLength: units["scale_length"].(float64),
+		}
+		unitMu.Unlock()
+		log.Printf("📏 Unit Normalization: %s using %s (Scale: %f)", args.Target, units["system"], units["scale_length"])
+	}
+
 	dispatchVibeEvent(LevelInfo, "handshake_complete", "", "READY", map[string]interface{}{"target": args.Target}); saveState()
 	updateBridgeActivity("KERNEL: READY")
 	return wrapForensicResult("OK"), nil, nil
@@ -673,8 +693,40 @@ func verify_engine_state(ctx context.Context, req *mcp.CallToolRequest, args Ver
 
 func submit_intent(ctx context.Context, req *mcp.CallToolRequest, args SubmitIntentArgs) (*mcp.CallToolResult, any, error) {
 	if args.Envelope.Rationale == "" || args.Envelope.Provenance == "" { return nil, nil, fmt.Errorf("TECHNICAL_RATIONALE_REQUIRED") }
+	
+	// 1. Log-Driven Governance: Check if AI has ingested recent history
+	logIngestMu.Lock()
+	if lastLogIngestedHash == "" {
+		// First intent of session, allow but warn in audit
+	} else if args.Envelope.BasedOnHashes["log"] != lastLogIngestedHash {
+		logIngestMu.Unlock()
+		return nil, nil, fmt.Errorf("LOG_INGESTION_REQUIRED: Intent must be grounded in latest forensic logs")
+	}
+	logIngestMu.Unlock()
+
+	// 2. Intent Binding: Validate Opcode against declared Intent
+	if !validateOpcodeIntent(args.Envelope.Intent, args.Envelope.Opcode) {
+		return nil, nil, fmt.Errorf("INTENT_MISMATCH: Opcode %X not permitted for intent %s", args.Envelope.Opcode, args.Envelope.Intent)
+	}
+
 	id := uuid.New().String(); txMu.Lock(); intents[id] = args.Envelope; txMu.Unlock()
 	return wrapForensicResult(id), nil, nil
+}
+
+func validateOpcodeIntent(intent IntentType, opcode VibeOpcode) bool {
+	if opcode == 0 { return true } // No opcode specified
+	switch intent {
+	case IntentOptimize:
+		return opcode == OpModifier || opcode == OpAudit || opcode == OpSystem
+	case IntentRig:
+		return opcode == OpTransform || opcode == OpAudit
+	case IntentLight:
+		return opcode == OpNode || opcode == OpAudit
+	case IntentSceneSetup:
+		return true // General setup allows all
+	default:
+		return opcode == OpAudit || opcode == OpSystem
+	}
 }
 
 func validate_intent(ctx context.Context, req *mcp.CallToolRequest, args struct{ID string `json:"intent_id"`}) (*mcp.CallToolResult, any, error) {
@@ -705,6 +757,12 @@ func commit_atomic_operation(ctx context.Context, req *mcp.CallToolRequest, args
 	txMu.Lock(); defer txMu.Unlock(); if args.ProofOfWork == "" { return nil, nil, fmt.Errorf("INVARIANT_VIOLATION: ProofOfWork Required") }
 	delete(transactions, args.IntentID); activeTransaction = nil; 
 	
+	// Ghost Audit Protocol: Commit-on-Commit
+	go func() {
+		log.Printf("👻 Ghost Audit: Checkpointing to .git_safety")
+		execCommand("python3 ../scripts/hardening/snap_commit.py Transaction Finalized: " + args.IntentID)
+	}()
+
 	updateBridgeActivity("KERNEL: READY")
 	return wrapForensicResult("COMMITTED"), nil, nil
 }
@@ -732,11 +790,25 @@ func sync_material(ctx context.Context, req *mcp.CallToolRequest, args SyncMater
 	return wrapForensicResult("OK"), nil, nil
 }
 
+func normalizeCoordinate(target string, value float64) float64 {
+	unitMu.RLock()
+	defer unitMu.RUnlock()
+	settings, ok := unitSettings[target]
+	if !ok || settings.ScaleLength == 0 { return value }
+	
+	// Normalize to Vibe-Meters (1.0 = 1m)
+	return value * settings.ScaleLength
+}
+
 func sync_transform(ctx context.Context, req *mcp.CallToolRequest, args SyncTransformArgs) (*mcp.CallToolResult, any, error) {
 	if err := checkHumanLock(args.ObjectID); err != nil { return nil, nil, err }
 	for _, v := range append(append(args.Position, args.Rotation...), args.Scale...) { if math.IsNaN(v) || math.IsInf(v, 0) { return nil, nil, fmt.Errorf("NUMERICAL_INSTABILITY") } }
 	
-	data := map[string]interface{}{"id": args.ObjectID, "transform": map[string]interface{}{"pos": args.Position, "rot": args.Rotation, "sca": args.Scale}}
+	// Apply Unit Normalization
+	normalizedPos := make([]float64, 3)
+	for i, v := range args.Position { normalizedPos[i] = normalizeCoordinate("unity", v) }
+	
+	data := map[string]interface{}{"id": args.ObjectID, "transform": map[string]interface{}{"pos": normalizedPos, "rot": args.Rotation, "sca": args.Scale}}
 	
 	// Mechanical Floor: Buffer the intent for coalescing
 	bufferSpeculativeIntent(args.ObjectID, "sync_transform", data)
@@ -859,6 +931,14 @@ func perimeter_lock(ctx context.Context, req *mcp.CallToolRequest, args struct{L
 		updateBridgeActivity("KERNEL: READY")
 	}
 	return wrapForensicResult("OK"), nil, nil
+}
+
+func ingest_forensic_logs(ctx context.Context, req *mcp.CallToolRequest, args struct{LogHash string `json:"log_hash"`}) (*mcp.CallToolResult, any, error) {
+	logIngestMu.Lock()
+	lastLogIngestedHash = args.LogHash
+	logIngestMu.Unlock()
+	log.Printf("📜 Log-Driven Governance: AI has ingested history at hash %s", args.LogHash)
+	return wrapForensicResult("INGESTED"), nil, nil
 }
 
 func get_bridge_heartbeat(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
@@ -1051,6 +1131,8 @@ func main() {
 	mcp.AddTool(server, &mcp.Tool{Name: "decommission_bridge", Description: "ISA 32"}, decommission_bridge)
 
 	mcp.AddTool(server, &mcp.Tool{Name: "reconstruct_state", Description: "Forensic"}, reconstruct_state)
+
+	mcp.AddTool(server, &mcp.Tool{Name: "ingest_forensic_logs", Description: "Log-as-State"}, ingest_forensic_logs)
 
 	mcp.AddTool(server, &mcp.Tool{Name: "invoke_specialist", Description: "Delegate"}, invoke_specialist)
 

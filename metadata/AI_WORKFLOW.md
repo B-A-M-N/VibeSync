@@ -1,6 +1,10 @@
-# VibeSync AI Workflow Instructions (Pain-Point Focused)
+## PHASE -4 — LOG INGESTION (MANDATORY)
 
-**Goal:** Ensure the bridge never corrupts scene state, preserves identities, survives crashes, and always reconciles Blender ↔ Unity deterministically.
+Before starting any task, the AI MUST ingest the recent forensic history to avoid "Tail-Chasing."
+
+1.  **Call**: `get_operation_journal`.
+2.  **Verify**: Identify the latest `FINAL` hash.
+3.  **Signal**: Call `ingest_forensic_logs(log_hash: latest_hash)`.
 
 ---
 
@@ -121,7 +125,9 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 
 18. **Real-Time Sentinel Check**: Verify engines are not busy (Compiling, Updating, Depsgraph recalculating).
 19. **Path Selection**: Categorize mutation as **Fast Path** (Cosmetic/Transform) or **Slow Path** (Structural).
-20. **Conflict Validation**: Ensure the intent does not violate existing provisional locks or the Conflict Resolution Policy.
+20. **Intent Binding**: Select the appropriate **Intent Label** (`OPTIMIZE`, `RIG`, `LIGHT`, `ANIMATE`, `SCENE_SETUP`).
+21. **Opcode Selection**: Map the mutation to its strictly defined **Opcode** (e.g., `0x03` for Transform).
+22. **Conflict Validation**: Ensure the intent does not violate existing provisional locks or the Conflict Resolution Policy.
 21. **Graph Validation**: For parenting changes, compute **Ancestor Closure**. Ensure the new parent is not a descendant of the target.
 22. **Closure Computation**: For destructive operations (Deletes), compute the **Delete Closure** (children, refs, constraints). Intent MUST target the full closure.
 23. Resolve all objects **by UUID and Prefab Depth**.

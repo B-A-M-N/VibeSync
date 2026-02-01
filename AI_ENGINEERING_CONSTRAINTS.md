@@ -68,6 +68,13 @@ To prevent engine crashes and material desync:
 - **Incremental Tooling**: Unity bridge code or tools (e.g., Poiyomi Lock) must be implemented and compiled in small, verifiable slices.
 - **Material Parity**: Strict naming parity between Blender material slots and Unity shader inputs is mandatory.
 
+## 🏎️ 10. Speculative Commit Mandate
+To eliminate user-visible stalls during sync:
+- **Never remove verification. Remove blocking.**
+- **Fast Path Recognition**: AI must categorize intents into "Fast Path" (Cosmetic/Transform) vs "Slow Path" (Structural).
+- **Provisional State Usage**: Fast Path mutations should use **Provisional Commit** status. The UI should reflect the change immediately while the Orchestrator verifies the hash asynchronously.
+- **Mandatory Rollback Logic**: All speculative systems MUST implement a deterministic rollback path that restores authoritative state if background verification fails.
+
 ---
 
 ## 🏗️ Architectural Constraints

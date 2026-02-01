@@ -64,12 +64,13 @@
     * Object creation, deletion, modification
     * Scene hierarchy changes
     * Asset updates (mesh, material, animation)
-17. Resolve all objects **by UUID only**.
-18. Wrap each operation in a transaction:
+17. **Path Selection**: Categorize mutation as **Fast Path** (Cosmetic/Transform) or **Slow Path** (Structural).
+18. Resolve all objects **by UUID only**.
+19. Wrap each operation in a transaction:
     ```
-    BEGIN → mutate → validate → COMMIT / ROLLBACK
+    BEGIN → mutate → PROVISIONAL COMMIT (Fast Path) / BLOCK (Slow Path) → validate → COMMIT / ROLLBACK
     ```
-19. Respect editor-specific restrictions:
+20. Respect editor-specific restrictions:
     * Unity: snapshot pre-Play, restore post-Play
     * Blender: avoid Python handle persistence across undo
 
@@ -115,23 +116,26 @@
 
 ---
 
-## PHASE 8 — EXTERNAL SYNC VERIFICATION
+## PHASE 8 — EXTERNAL SYNC VERIFICATION (FINALIZATION)
 
 32. Validate incoming/outgoing payloads:
     * Project ID, schema version, UUID namespace
     * Reject stale or mismatched data
-33. Lock state during sync, unlock after validation
-34. Ensure operations are order-independent; buffer events as necessary
+33. **Deferred Hash Matching**: For Speculative/Provisional intents, perform background hash verification.
+34. **Finalization**: If verified, promote `Provisional → Finalized` in the WAL and clear engine tags.
+35. **Rollback**: If verification fails or times out, issue an immediate `ROLLBACK` to the last authoritative state.
+36. Ensure operations are order-independent; buffer events as necessary.
 
 ---
 
-## PHASE 9 — PERFORMANCE & WATCHDOG
+## PHASE 9 — PERFORMANCE, BATCHING & WATCHDOG
 
-35. Set operation limits:
+37. **Intent Batching**: Coalesce micro-intents (e.g., rapid transform updates) into semantic batches (250-500ms window) before verification.
+38. Set operation limits:
     * Max scans per tick
     * Max repair/fix operations per tick
-36. Yield execution to prevent editor freeze
-37. Resume monitoring only in idle states
+39. Yield execution to prevent editor freeze
+40. Resume monitoring only in idle states
 
 ---
 

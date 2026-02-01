@@ -22,6 +22,11 @@ This document defines the essential invariants of the VibeSync cluster. These ru
 - **Hash-Gated Analysis**: Logs are only re-processed if their state hash has changed, ensuring deterministic troubleshooting context.
 - **Context Primacy**: Forensic evidence from logs overrides "Success" status messages from adapters.
 
+## 🏎️ 5. The Law of Speculative Finality
+- **Non-Blocking Verification**: To eliminate UI latency, the Orchestrator may grant **Provisional Commit** status to "Fast Path" operations (Transforms, Materials) while verification happens asynchronously.
+- **Deterministic Rollback**: Any provisional state that fails deferred verification MUST be rolled back automatically. The system prioritizes "Safety over Speed" during the finalization window.
+- **Atomic Batching**: Micro-intents are coalesced into semantic batches to reduce verification overhead.
+
 ---
 
 ## 🛰️ Engine State Machine

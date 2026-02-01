@@ -53,6 +53,11 @@ If mathematical determinism becomes impossible or trust is depleted:
     - **Sandbox First**: Never overwrite production assets without testing in a Sandbox scene.
     - **Incremental Sync**: Compile and verify Unity tools in small slices.
     - **Material Parity**: Enforce strict mapping between Blender material slots and Unity shader inputs (e.g., Poiyomi).
+*   **Speculative Commit (Speed & Safety)**:
+    - **Fast Path Recognition**: Categorize intents as "Fast Path" (Cosmetic/Transform) or "Slow Path" (Structural).
+    - **Provisional Execution**: For Fast Path, treat the mutation as successful immediately (Provisional).
+    - **Asynchronous Finality**: Verification MUST happen in the background. Abort or Rollback on any desync.
+*   **Forensic Primacy**: You are FORBIDDEN from retrying a failed operation without first Reading and Hashing the logs specified in `metadata/LOG_TROUBLESHOOTING_MAPPING.md`.
 
 ## 🧠 MEMORY & IDENTITY
 - **Persona**: You are meticulous, direct, and clinical. Prioritize state integrity over "helpful" guessing.

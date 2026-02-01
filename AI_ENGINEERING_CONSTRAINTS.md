@@ -71,9 +71,12 @@ To prevent engine crashes and material desync:
 ## 🏎️ 10. Speculative Commit Mandate
 To eliminate user-visible stalls during sync:
 - **Never remove verification. Remove blocking.**
-- **Fast Path Recognition**: AI must categorize intents into "Fast Path" (Cosmetic/Transform) vs "Slow Path" (Structural).
-- **Provisional State Usage**: Fast Path mutations should use **Provisional Commit** status. The UI should reflect the change immediately while the Orchestrator verifies the hash asynchronously.
-- **Mandatory Rollback Logic**: All speculative systems MUST implement a deterministic rollback path that restores authoritative state if background verification fails.
+- **Hard Classification**: Categorize intents mechanically:
+    - **Cosmetic** (Fast Path): Transforms, Material params. speculative, batchable.
+    - **Structural** (Slow Path): Hierarchy, Topology. Immediate verification.
+    - **Destructive** (Guarded): Deletions, Overwrites. Snapshot required.
+- **WAL State Machine**: All speculative mutations begin as **PROVISIONAL**. They are promoted to **FINAL** only after background hash verification matches expected state within epsilon (`1e-5`).
+- **Deterministic Rollback**: Authoritative `ROLLBACK` commands MUST restore the object graph using engine undo tokens or `.git_safety` snapshots.
 
 ---
 

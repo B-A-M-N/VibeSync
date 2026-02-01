@@ -238,6 +238,53 @@ type InvokeSpecialistArgs struct {
 	TargetIntent map[string]interface{} `json:"target_intent"`
 }
 
+type IntentClass string
+
+const (
+	ClassCosmetic    IntentClass = "cosmetic"
+	ClassStructural  IntentClass = "structural"
+	ClassDestructive IntentClass = "destructive"
+)
+
+type WalPhase string
+
+const (
+	PhaseProvisional WalPhase = "PROVISIONAL"
+	PhaseFinal       WalPhase = "FINAL"
+	PhaseRolledBack  WalPhase = "ROLLED_BACK"
+	PhaseQuarantined WalPhase = "QUARANTINED"
+)
+
+type WalEntry struct {
+	IntentID   uint64    `json:"intent_id"`
+	ParentHash string    `json:"parent_hash"`
+	EntryHash  string    `json:"entry_hash"`
+	Timestamp  int64     `json:"timestamp"`
+	Engine     string    `json:"engine"`
+	Actor      string    `json:"actor"`
+	Scope      WalScope  `json:"scope"`
+	Phase      WalPhase  `json:"phase"`
+	Verify     WalVerify `json:"verification"`
+	Rollback   WalRoll   `json:"rollback"`
+}
+
+type WalScope struct {
+	UUIDs []string    `json:"uuids"`
+	Class IntentClass `json:"intent_class"`
+}
+
+type WalVerify struct {
+	ExpectedHash string  `json:"expected_hash"`
+	ObservedHash string  `json:"observed_hash,omitempty"`
+	Epsilon      float64 `json:"epsilon"`
+	VerifiedAt   int64   `json:"verified_at,omitempty"`
+}
+
+type WalRoll struct {
+	UndoToken   string `json:"undo_token"`
+	SnapshotRef string `json:"snapshot_ref,omitempty"`
+}
+
 type EntropyBudget struct {
 	Limit int `json:"limit"`
 	Used  int `json:"used"`

@@ -24,7 +24,8 @@ This document defines the essential invariants of the VibeSync cluster. These ru
 
 ## 🏎️ 5. The Law of Speculative Finality
 - **Non-Blocking Verification**: To eliminate UI latency, the Orchestrator may grant **Provisional Commit** status to "Fast Path" operations (Transforms, Materials) while verification happens asynchronously.
-- **Deterministic Rollback**: Any provisional state that fails deferred verification MUST be rolled back automatically. The system prioritizes "Safety over Speed" during the finalization window.
+- **State Transitions**: Mutations MUST follow the monotonic path: `PROVISIONAL` -> `FINAL` (Verified) OR `ROLLED_BACK` (Mismatch).
+- **Deterministic Rollback**: Any provisional state that fails deferred verification MUST be rolled back automatically using engine-level undo tokens.
 - **Atomic Batching**: Micro-intents are coalesced into semantic batches to reduce verification overhead.
 
 ---

@@ -15,6 +15,8 @@ This document defines the mandatory mapping between error triggers and their ass
 | `Drift Detected` | `.vibesync/wal.jsonl`, `metadata/bridge_activity.txt` | Desync between source and target hashes. |
 | `ECONNREFUSED` / `Timeout` | `scripts/preflight.py` output, `mcp-server/vibe_server.log` | Port conflict or zombie engine process. |
 | `NaN / Inf Detected` | `blender_bridge.log`, `mcp-server/vibe_server.log` | Numerical instability in transform/material data. |
+| `Epsilon Violation` | `.vibesync/wal.jsonl`, `mcp-server/vibe_server.log` | Background hash drift beyond 1e-5 threshold. |
+| `Speculative Timeout` | `.vibesync/events.jsonl`, `mcp-server/vibe_server.log` | Engine failed to return background hash within window. |
 
 ---
 

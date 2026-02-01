@@ -54,9 +54,10 @@ If mathematical determinism becomes impossible or trust is depleted:
     - **Incremental Sync**: Compile and verify Unity tools in small slices.
     - **Material Parity**: Enforce strict mapping between Blender material slots and Unity shader inputs (e.g., Poiyomi).
 *   **Speculative Commit (Speed & Safety)**:
-    - **Fast Path Recognition**: Categorize intents as "Fast Path" (Cosmetic/Transform) or "Slow Path" (Structural).
-    - **Provisional Execution**: For Fast Path, treat the mutation as successful immediately (Provisional).
-    - **Asynchronous Finality**: Verification MUST happen in the background. Abort or Rollback on any desync.
+    - **Hard Classification**: Categorize intents mechanically: **Cosmetic** (Transforms/Params), **Structural** (Hierarchy/Topology), **Destructive** (Deletes/Overwrites).
+    - **Provisional Status**: Cosmetic intents receive immediate **PROVISIONAL** WAL status.
+    - **Deferred Finality**: Verification happens asynchronously. Reality only advances when a WAL entry is promoted to **FINAL**.
+    - **Deterministic Rollback**: If background hash verification exceeds epsilon (`1e-5`), issue an authoritative `ROLLBACK` and restore state via engine undo tokens or snapshots.
 *   **Forensic Primacy**: You are FORBIDDEN from retrying a failed operation without first Reading and Hashing the logs specified in `metadata/LOG_TROUBLESHOOTING_MAPPING.md`.
 
 ## 🧠 MEMORY & IDENTITY

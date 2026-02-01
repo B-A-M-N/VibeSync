@@ -29,28 +29,77 @@ The system acts as if a mutation succeeded (Provisional State) while verifying t
 
 ---
 
-## 🏎️ 3. Fast Path vs. Slow Path
+## 📜 3. WAL Metadata Schema (Production-Grade)
 
-| Category | Fast Path (Speculative) | Slow Path (Blocking) |
-| :--- | :--- | :--- |
-| **Criteria** | Cosmetic changes, Transforms, Material parameters, Scalar values. | Mesh topology, Parenting changes, Deletions, Prefab instancing. |
-| **Behavior** | Instant Provisional Commit + Background Verify. | Sequential validation; Verification MUST pass before UI unlock. |
-| **Verification** | Asynchronous (Deferred). | Synchronous (Immediate). |
+All entries in the Write-Ahead Log (WAL) MUST adhere to this structure to ensure formal auditability of speculative states.
+
+```json
+{
+  "intent_id": "monotonic:uint64",
+  "parent_hash": "sha256",
+  "entry_hash": "sha256",
+  "timestamp": "orchestrator_time_ns",
+  "engine": "unity|blender",
+  "actor": "ai|human|system",
+  "scope": {
+    "uuids": ["uuid-v4", "..."],
+    "intent_class": "cosmetic|structural|destructive"
+  },
+  "phase": "PROVISIONAL|FINAL|ROLLED_BACK|QUARANTINED",
+  "verification": {
+    "expected_hash": "sha256",
+    "observed_hash": "sha256|null",
+    "epsilon": 1e-5,
+    "verified_at": "timestamp|null"
+  },
+  "rollback": {
+    "undo_token": "engine_specific",
+    "snapshot_ref": "git_safety_ref|null"
+  }
+}
+```
+
+### State Machine Invariants
+- **PROVISIONAL** entries may not mutate the `parent_hash` of the authoritative chain.
+- **Only FINAL** entries advance "Reality" in the global state.
+- **ROLLED_BACK** entries remain in the log as immutable evidence of failure.
+- **QUARANTINED** entries halt all causality in the affected engine until manual intervention.
 
 ---
 
-## 📦 4. Intent Batching (Coalescing)
-To reduce verification churn, small intents are coalesced:
-- **Time-based**: Group changes within a 250ms window.
-- **Semantic**: Group changes affecting the same set of UUIDs.
-- **Atomic Batch**: A single `VERIFY` call covers the entire batch.
+## 🔁 4. Rollback Protocol
+
+Rollback is issued **exclusively by the Orchestrator**. Engines and AI agents are prohibited from self-initiating rollback.
+
+### Trigger Conditions
+- Hash mismatch beyond epsilon threshold.
+- Missing UUID during identity parity check.
+- Exception mapped to `metadata/LOG_TROUBLESHOOTING_MAPPING.md`.
+- Heartbeat drift during the provisional window.
+
+### Message Format
+```json
+{
+  "type": "ROLLBACK",
+  "intent_id": "uint64",
+  "reason": "HASH_MISMATCH|IDENTITY_BREAK|ENGINE_FAULT",
+  "severity": "SOFT|HARD"
+}
+```
 
 ---
 
-## 🚨 5. Conflict & Panic Handling
-- **Speculation Halt**: If a **Panic Lock** is triggered (heartbeat failure, critical desync), all speculation stops immediately.
-- **No Persistence**: Provisional state is NEVER saved to disk or persistent storage until `FINALIZED`.
-- **Conflict Resolution**: If a user manually edits a provisionally-held object, the Orchestrator immediately aborts the speculation and snapshots the user's edit as the new source of truth.
+## 🏎️ 5. Hard Classification Rules (Operation Semantics)
+
+AI agents NEVER decide the classification. It is derived mechanically from the operation.
+
+| Category | Fast Path (Cosmetic) | Slow Path (Structural) | Guarded Path (Destructive) |
+| :--- | :--- | :--- | :--- |
+| **Criteria** | No object graph change. No UUID creation/removal. No reference alteration. | Alters hierarchy, references, topology, or instancing. | Deletes UUIDs. Overwrites assets. Irreversible without snapshot. |
+| **Examples** | Transforms, Material params, Shader edits, Visibility toggles. | Parenting, Prefab instantiation, Modifier stack changes. | Object deletion, Mesh overwrite, Asset replacement. |
+| **Commit Mode** | AUTO | AUTO | AUTO + SNAPSHOT |
+| **Batch Window** | 250–500ms | 0–100ms | DISABLED |
+| **Verification** | Asynchronous (Deferred) | Synchronous (Immediate) | Snapshot-Gated |
 
 ---
 *VibeSync: Speed without Compromise.*

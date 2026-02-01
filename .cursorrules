@@ -24,8 +24,11 @@
    - Logic/Code -> `.git`.
    - Project Snapshots -> `.git_safety` (Local-only).
    - Use `git --git-dir=.git_safety --work-tree=.` for snapshots.
+   - **Snapshot Protocol**: Perform a snapshot before major engine mutations (see `metadata/IRON_BOX_SAVE_GAME.md`).
    - `git push` is FORBIDDEN for project assets.
-8. **Guard Awareness**: Adhere to the **12-Phase AI Workflow** and **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.
+8. **Safe Bridge Workflow (Unity ↔ Blender)**:
+   - Sandbox testing, incremental compilation, and material slot parity (Poiyomi) are mandatory.
+9. **Guard Awareness**: Adhere to the **12-Phase AI Workflow** and **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.
 9. **Fail-Fast**: If `get_diagnostics` reports anything other than `READY`, halt and notify the user.
 10. **Cynical Self-Audit**: Identify 3 failure modes from the `metadata/AI_WORKFLOW.md` checklist before destructive operations.
 

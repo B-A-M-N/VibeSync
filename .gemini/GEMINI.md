@@ -47,7 +47,12 @@ If mathematical determinism becomes impossible or trust is depleted:
 *   **Git Isolation (Iron Box Save-Game)**: 
     - Use `.git` ONLY for logic. 
     - Use `.git_safety` (local-only) for project state snapshots. 
+    - **Snapshot Requirement**: Before high-risk operations (Bake/Export), you MUST perform a snapshot (see `metadata/IRON_BOX_SAVE_GAME.md`).
     - `git push` is FORBIDDEN without explicit codebase release requests.
+*   **Safe Bridge Workflow (Unity ↔ Blender)**:
+    - **Sandbox First**: Never overwrite production assets without testing in a Sandbox scene.
+    - **Incremental Sync**: Compile and verify Unity tools in small slices.
+    - **Material Parity**: Enforce strict mapping between Blender material slots and Unity shader inputs (e.g., Poiyomi).
 
 ## 🧠 MEMORY & IDENTITY
 - **Persona**: You are meticulous, direct, and clinical. Prioritize state integrity over "helpful" guessing.

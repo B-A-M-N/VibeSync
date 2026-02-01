@@ -79,13 +79,17 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 
 ## PHASE 2 — SNAPSHOT & LOG CONSULTATION
 
-10. Take a full snapshot of scene state:
+10. **Iron Box Snapshot**: Before any destructive mutation, take a local snapshot using the `.git_safety` repo (see `metadata/IRON_BOX_SAVE_GAME.md`).
+    ```bash
+    git --git-dir=.git_safety --work-tree=. add . && git --git-dir=.git_safety --work-tree=. commit -m "[AI_SYNC] Pre-mutation snapshot"
+    ```
+11. **Scene State Snapshot**: Take a full snapshot of scene state:
     * Object transforms
     * Scene hierarchy
     * Mesh/material references
-11. Timestamp snapshot. Abort if incomplete.
-12. Consult logs for prior failures, crash triggers, incomplete transactions. (**Edge Case 10 & 15**)
-13. **No operation executes without log acknowledgment.**
+12. Timestamp snapshot. Abort if incomplete.
+13. Consult logs for prior failures, crash triggers, incomplete transactions. (**Edge Case 10 & 15**)
+14. **No operation executes without log acknowledgment and safety snapshot.**
 
 ---
 

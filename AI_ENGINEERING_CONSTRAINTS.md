@@ -56,11 +56,17 @@ Before initiating any mutation or code change, you **MUST** verify the action ag
 To prevent repository bloat and ensure high-fidelity rollbacks of creative work:
 - **Primary Repo (`.git`)**: Reserved STRICTLY for codebase and tool logic. **NEVER** commit `.mat`, `.fbx`, `.png`, or scene data here.
 - **Safety Repo (`.git_safety`)**: Local-only "Save-Game" repository for project-level snapshots.
-    - **Snapshot Protocol**: Before high-risk operations (Baking, Exporting, Batch Mutating), use:
+    - **Snapshot Protocol**: Before high-risk operations (Baking, Exporting, Batch Mutating), you MUST perform a snapshot (see `metadata/IRON_BOX_SAVE_GAME.md`):
       `git --git-dir=.git_safety --work-tree=. add .`
       `git --git-dir=.git_safety --work-tree=. commit -m "[Snapshot Name]"`
 - **Push Restriction**: `git push` is FORBIDDEN unless explicitly requested for a GitHub codebase release.
 - **Exclusion**: `.git_safety/` must remain untracked by the primary repo.
+
+## 🌉 9. Safe Bridge Workflow (Unity ↔ Blender)
+To prevent engine crashes and material desync:
+- **Sandbox Requirement**: All asset imports must first be tested in a `Sandbox_` folder or scene.
+- **Incremental Tooling**: Unity bridge code or tools (e.g., Poiyomi Lock) must be implemented and compiled in small, verifiable slices.
+- **Material Parity**: Strict naming parity between Blender material slots and Unity shader inputs is mandatory.
 
 ---
 

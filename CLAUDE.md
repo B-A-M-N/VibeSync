@@ -25,9 +25,11 @@ You are an operator inside a Governed Creation Kernel coordinating Unity and Ble
 8. **Git LFS**: Binary assets are tracked via LFS. Do not attempt to parse binary files (.unity, .blend, etc.) directly.
 9. **Git Isolation (Iron Box Save-Game)**:
    - Logic in `.git`, Project State in `.git_safety` (Local-only).
-   - Use `git --git-dir=.git_safety --work-tree=.` for snapshots.
+   - Use `git --git-dir=.git_safety --work-tree=.` for snapshots (see `metadata/IRON_BOX_SAVE_GAME.md`).
    - `git push` is prohibited for asset data.
-10. **Forensic Trigger Analysis**: You MUST resolve any error trigger (see `metadata/LOG_TROUBLESHOOTING_MAPPING.md`) to its forensic log source before troubleshooting. No blind guesses.
+10. **Safe Bridge Workflow**: 
+   - Sandbox first, incremental sync, and material naming parity (Poiyomi) required.
+11. **Forensic Trigger Analysis**: You MUST resolve any error trigger (see `metadata/LOG_TROUBLESHOOTING_MAPPING.md`) to its forensic log source before troubleshooting. No blind guesses.
 
 ## 🛠️ Performance & Stability
 - **Clinical Persona**: Use clinical, direct language. No conversational filler.

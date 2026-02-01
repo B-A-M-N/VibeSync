@@ -44,6 +44,7 @@ import (
 // Persistence Paths
 const (
 	PersistenceDir = ".vibesync"
+	QueueDir       = PersistenceDir + "/queue"
 	WalFile        = PersistenceDir + "/wal.jsonl"
 	EventFile      = PersistenceDir + "/events.jsonl"
 	StateFile      = PersistenceDir + "/state.json"
@@ -219,6 +220,13 @@ func isPerformanceOp(endpoint string) bool {
 
 func init() {
 	if _, err := os.Stat(PersistenceDir); os.IsNotExist(err) { os.Mkdir(PersistenceDir, 0755) }
+	
+	// Initialize 5-Agent Mailbox Structure
+	subdirs := []string{"global/inbox", "blender/inbox", "blender/work", "blender/outbox", "unity/inbox", "unity/work", "unity/outbox"}
+	for _, s := range subdirs {
+		os.MkdirAll(filepath.Join(QueueDir, s), 0755)
+	}
+
 	sandbox := filepath.Join(PersistenceDir, "tmp")
 	if _, err := os.Stat(sandbox); os.IsNotExist(err) { os.Mkdir(sandbox, 0755) }
 	loadState()
@@ -767,6 +775,55 @@ func commit_atomic_operation(ctx context.Context, req *mcp.CallToolRequest, args
 	return wrapForensicResult("COMMITTED"), nil, nil
 }
 
+func dispatch_work_order(ctx context.Context, req *mcp.CallToolRequest, args WorkOrder) (*mcp.CallToolResult, any, error) {
+	// Determine directory based on intent/opcode
+	dir := "unity/inbox"
+	if args.Opcode == OpNode || args.Opcode == OpModifier { dir = "blender/inbox" }
+	
+	path := filepath.Join(QueueDir, dir, fmt.Sprintf("order_%s.json", args.ID))
+	data, _ := json.MarshalIndent(args, "", "  ")
+	os.WriteFile(path, data, 0644)
+	
+	log.Printf("📩 Dispatching Work Order %s to %s", args.ID, dir)
+	return wrapForensicResult("DISPATCHED"), nil, nil
+}
+
+func startQueueWatchers() {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	for range ticker.C {
+		// Poll blender and unity outboxes
+		for _, engine := range []string{"blender", "unity"} {
+			outbox := filepath.Join(QueueDir, engine, "outbox")
+			files, _ := os.ReadDir(outbox)
+			for _, f := range files {
+				if strings.HasSuffix(f.Name(), ".json") {
+					processWorkResult(engine, filepath.Join(outbox, f.Name()))
+				}
+			}
+		}
+	}
+}
+
+func processWorkResult(engine, path string) {
+	data, err := os.ReadFile(path)
+	if err != nil { return }
+	var res WorkResult
+	if err := json.Unmarshal(data, &res); err != nil { return }
+	
+	log.Printf("✅ Received Work Result from %s: %s (Status: %s)", engine, res.WorkOrderID, res.Status)
+	
+	// Finalize WAL or update provisional state
+	journalOperation(map[string]interface{}{
+		"type": "work_result",
+		"engine": engine,
+		"order_id": res.WorkOrderID,
+		"status": res.Status,
+		"hash": res.Hash,
+	})
+	
+	os.Remove(path)
+}
+
 func abort_atomic_operation(ctx context.Context, req *mcp.CallToolRequest, args AtomicOpArgs) (*mcp.CallToolResult, any, error) {
 	txMu.Lock(); defer txMu.Unlock(); delete(transactions, args.IntentID); activeTransaction = nil; return wrapForensicResult("ABORTED"), nil, nil
 }
@@ -1146,6 +1203,8 @@ func main() {
 
 	mcp.AddTool(server, &mcp.Tool{Name: "execute_governed_mutation", Description: "Gov Mutate"}, execute_governed_mutation)
 
+	mcp.AddTool(server, &mcp.Tool{Name: "dispatch_work_order", Description: "Mailbox Dispatch"}, dispatch_work_order)
+
 
 
 	// Start Background Services (Flow Amplifiers)
@@ -1153,6 +1212,8 @@ func main() {
 	go startControlPlane()
 
 	go startTransactionGC()
+
+	go startQueueWatchers()
 
 
 

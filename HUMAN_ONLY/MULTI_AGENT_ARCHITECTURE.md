@@ -1,49 +1,58 @@
-# 🤖 Multi-Agent Isolation Architecture (Tri-Silo Model)
+# 🤖 Multi-Agent Pipelined Studio Model (5-Agent Cluster)
 
 This document defines the "ideal" configuration for high-scale automation using multiple AI agents coordinated by the VibeSync kernel.
 
 ---
 
-## 1. The Tri-Silo Model
+## 1. The Pipelined Studio Model
 
-To prevent context poisoning and "mental bleed" between different engine coordinate systems and logics, we implement three distinct sandboxes:
+To prevent context poisoning and "mental bleed" between different engine logics, we implement a vertical stack of five distinct roles:
 
-### 🧠 Agent Alpha (The Kernel Coordinator)
+### 🧠 Agent Alpha (The Conductor)
 - **Scope**: Exclusive access to the **Go Orchestrator MCP**.
-- **Rules**: Follows `BRIDGE_CONTRACT.md`. Deals only in **UUIDs** and **Intents**.
-- **Role**: Maintains the Write-Ahead Log (WAL) and determines high-level scene state goals. It never sees raw C# or Python.
+- **Role**: Creative Director. Maintains the high-level strategy and global Write-Ahead Log (WAL).
+- **Communication**: Pushes strategy to the **Global Inbox**.
 
-### 🧊 Agent Beta (The Blender Specialist)
-- **Scope**: Exclusive access to the **BlenderVibeBridge MCP**.
-- **Rules**: Follows Blender `FREEZE_PROOF_GUIDE.md`. 
-- **Role**: Translates intents into precise `bpy` operations. It is oblivious to Unity's existence.
+### 🔍 Agents Beta-1 & Gamma-1 (The Foremen)
+- **Role**: Forensic Strategists for Blender and Unity.
+- **Responsibility**: Ingest error logs, monitor engine sentinels, and translate intents into **strictly-mapped Opcodes**.
+- **Scope**: Headless. Oblivious to each other's engines.
 
-### 🎮 Agent Gamma (The Unity Specialist)
-- **Scope**: Exclusive access to the **UnityVibeBridge MCP**.
-- **Rules**: Follows Unity `AI_ENGINEERING_CONSTRAINTS.md`.
-- **Role**: Ensures Unity state matches target hashes. Operates in Y-up space, oblivious to Blender's Z-up world.
-
----
-
-## 🛡️ 2. Isolation Mechanisms (The Firewall)
-
-### A. Protocol-Only IPC
-Messages passed from the Coordinator to specialists are filtered through the **VibeSync Sanitizer**. This script strips engine-specific jargon (e.g., removing "GameObject" from Blender-bound messages) to prevent cross-contamination of the agent's mental model.
-
-### B. Stateless Specialist Prompts
-Specialists are treated as "ephemeral." Every invocation includes the **Current State Hash** and the **Target Intent**, ensuring they don't rely on long-term chat history that could contain stale or poisoned data.
-
-### C. The UUID Firewall
-All technical engine-internal handles (pointers, InstanceIDs) are stripped at the Orchestrator level. All agents communicate using the **Global ID Map** (UUIDs), ensuring they can reference the same entity without sharing technical "scaffolding" that leads to confusion.
+### ⌨️ Agents Beta-2 & Gamma-2 (The Operators)
+- **Role**: Execution Specialists.
+- **Responsibility**: Receive Opcodes and generate engine-specific scripts (bpy/C#).
+- **Scope**: Stateless. Oblivious to forensic history or strategy.
 
 ---
 
-## 🚀 3. Ideal Hardware/Model Mapping
+## 🏢 2. The Mailbox Pipeline (.vibesync/queue/)
+
+Agents communicate asynchronously through a directory-based mailbox system:
+
+1.  **Conductor** drops a `WorkOrder` into `[engine]/inbox`.
+2.  **Foreman** reads the order, ingests engine logs, and writes an `Opcode` into `[engine]/work`.
+3.  **Operator** reads the opcode, generates the script, and pushes it to the engine.
+4.  **Operator** writes the result (hash + status) into `[engine]/outbox`.
+5.  **Orchestrator** reads the result and finalizes the transaction in the WAL.
+
+---
+
+## 🛡️ 3. Isolation & Hardening
+
+### A. Context Partitioning
+The **Operator** never sees the 50 previous error logs that the **Foreman** had to ingest. This prevents "AI Psychosis" where the coder gets confused by its own history.
+
+### B. Precision Opcodes
+Because the **Foreman** dictates the Opcode, the **Operator** is mechanically forbidden from performing "Creative" (hallucinated) actions that fall outside the current task's scope.
+
+---
+
+## 🚀 4. Recommended Hardware/Model Mapping
 | Role | Recommended Model | Priority |
 | :--- | :--- | :--- |
-| **Coordinator** | Gemini 1.5 Pro / Claude 3.5 Sonnet | Deep Reasoning, State Integrity |
-| **Blender Specialist** | Gemini 1.5 Flash / Claude 3 Haiku | Speed, Literal Protocol Adherence |
-| **Unity Specialist** | Gemini 1.5 Flash / Claude 3 Haiku | Speed, Literal Protocol Adherence |
+| **Conductor** | Gemini 1.5 Pro | Strategy, Reasoning |
+| **Foremen** | Gemini 1.5 Pro | Forensics, Log Ingestion |
+| **Operators** | Gemini 1.5 Flash | Speed, Precision, Cost |
 
 ---
 *Copyright (C) 2026 B-A-M-N*

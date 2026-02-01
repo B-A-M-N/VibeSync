@@ -374,6 +374,25 @@ type WalRoll struct {
 	SnapshotRef string `json:"snapshot_ref,omitempty"`
 }
 
+type WorkOrder struct {
+	ID          string     `json:"id"`
+	MonotonicID int64      `json:"monotonic_id"`
+	Intent      IntentType `json:"intent"`
+	Opcode      VibeOpcode `json:"opcode"`
+	UUID        string     `json:"uuid"`
+	Description string     `json:"description"`
+	Context     map[string]interface{} `json:"context"` // Snapshot of relevant state
+}
+
+type WorkResult struct {
+	ID           string `json:"id"`
+	WorkOrderID  string `json:"work_order_id"`
+	Status       string `json:"status"` // SUCCESS | FAILURE | BUSY
+	Hash         string `json:"hash"`
+	Error        string `json:"error,omitempty"`
+	Payload      interface{} `json:"payload,omitempty"`
+}
+
 type EntropyBudget struct {
 	Limit int `json:"limit"`
 	Used  int `json:"used"`

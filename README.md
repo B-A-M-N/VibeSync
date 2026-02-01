@@ -24,8 +24,25 @@
 
 ### 🛠️ For Developers
 - **Governed Control Plane**: Zero-trust architecture using a hardened Go Orchestrator.
+- **5-Agent Studio Model**: Distributed pipelining between Strategists (Foremen) and Coders (Operators).
 - **Atomic Transactions**: Formal intent-to-state pipeline with binary-level hash verification.
 - **Extensible ISA**: Numbered toolset for deterministic AI and CLI-driven scene orchestration.
+
+---
+
+## 🤖 The 5-Agent Studio Model
+VibeSync uses a multi-agent "Mailbox" system to eliminate context poisoning and maximize speed.
+
+### How to Run:
+1.  **Start Orchestrator**: `cd mcp-server && go run main.go contract.go`
+2.  **Spawn Workers**: (In separate terminal tabs)
+    ```bash
+    python3 scripts/reflex_worker.py Foreman blender
+    python3 scripts/reflex_worker.py Operator blender
+    python3 scripts/reflex_worker.py Foreman unity
+    python3 scripts/reflex_worker.py Operator unity
+    ```
+3.  **Conduct**: Use your main Gemini CLI instance to issue high-level commands.
 
 ---
 

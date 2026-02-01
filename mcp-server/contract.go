@@ -256,16 +256,24 @@ const (
 )
 
 type WalEntry struct {
-	IntentID   uint64    `json:"intent_id"`
-	ParentHash string    `json:"parent_hash"`
-	EntryHash  string    `json:"entry_hash"`
-	Timestamp  int64     `json:"timestamp"`
-	Engine     string    `json:"engine"`
-	Actor      string    `json:"actor"`
-	Scope      WalScope  `json:"scope"`
-	Phase      WalPhase  `json:"phase"`
-	Verify     WalVerify `json:"verification"`
-	Rollback   WalRoll   `json:"rollback"`
+	IntentID   uint64          `json:"intent_id"`
+	ParentHash string          `json:"parent_hash"`
+	EntryHash  string          `json:"entry_hash"`
+	Timestamp  int64           `json:"timestamp"`
+	Engine     string          `json:"engine"`
+	Actor      string          `json:"actor"`
+	Scope      WalScope        `json:"scope"`
+	Phase      WalPhase        `json:"phase"`
+	Verify     WalVerify       `json:"verification"`
+	Rollback   WalRoll         `json:"rollback"`
+	Conflict   ConflictMetadata `json:"conflict,omitempty"`
+}
+
+type ConflictMetadata struct {
+	Type           string `json:"type"`
+	Resolution     string `json:"resolution"`
+	WinnerIntentID uint64 `json:"winner_intent_id,omitempty"`
+	Reason         string `json:"reason"`
 }
 
 type ObjectKind string

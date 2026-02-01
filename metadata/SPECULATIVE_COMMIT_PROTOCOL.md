@@ -103,4 +103,20 @@ AI agents NEVER decide the classification. It is derived mechanically from the o
 | **Verification** | Asynchronous (Deferred) | Synchronous (Immediate) | Snapshot-Gated |
 
 ---
+
+## 📦 6. Intent Batching & Conflict Detection
+To reduce verification churn and ensure semantic integrity, micro-intents are coalesced before finalization.
+- **Time-based Coalescing**: Group changes within a 250ms window.
+- **Semantic Coalescing**: Group changes affecting the same set of UUIDs.
+- **Conflict Enforcement**: During batching, the Orchestrator applies the `metadata/CONFLICT_RESOLUTION_POLICY.md`.
+- **Atomic Batch Verification**: A single `VERIFY` call covers the entire batch. If a Structural/Destructive conflict is detected, the affected intents transition to `QUARANTINED`.
+
+---
+
+## 🚨 7. Conflict & Panic Handling
+- **Speculation Halt**: If a **Panic Lock** is triggered (heartbeat failure, critical desync), all speculation stops immediately.
+- **No Persistence**: Provisional state is NEVER saved to disk or persistent storage until `FINALIZED`.
+- **Conflict Resolution**: If a user manually edits a provisionally-held object, the Orchestrator immediately aborts the speculation and snapshots the user's edit as the new source of truth.
+
+---
 *VibeSync: Speed without Compromise.*

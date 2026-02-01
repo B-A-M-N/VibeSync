@@ -115,8 +115,9 @@ To reduce verification churn and ensure semantic integrity, micro-intents are co
 
 ## 🚨 7. Conflict & Panic Handling
 - **Speculation Halt**: If a **Panic Lock** is triggered (heartbeat failure, critical desync), all speculation stops immediately.
+- **Human-Active Lock**: If a human actively manipulates an object (lock_type: `HUMAN_ACTIVE`), all speculative AI intents for that UUID enter a `WAIT_HUMAN_LOCK` state.
 - **No Persistence**: Provisional state is NEVER saved to disk or persistent storage until `FINALIZED`.
-- **Conflict Resolution**: If a user manually edits a provisionally-held object, the Orchestrator immediately aborts the speculation and snapshots the user's edit as the new source of truth.
+- **Conflict Resolution**: If a user manually edits a provisionally-held object, the Orchestrator immediately aborts the speculation, rolls back the AI intent, and snapshots the user's edit as the new source of truth.
 
 ---
 *VibeSync: Speed without Compromise.*

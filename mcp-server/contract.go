@@ -253,6 +253,7 @@ const (
 	PhaseFinal       WalPhase = "FINAL"
 	PhaseRolledBack  WalPhase = "ROLLED_BACK"
 	PhaseQuarantined WalPhase = "QUARANTINED"
+	PhaseWaitHuman   WalPhase = "WAIT_HUMAN_LOCK"
 )
 
 type WalEntry struct {

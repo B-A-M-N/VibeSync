@@ -183,9 +183,10 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 
 ## PHASE 10 — USER OVERRIDE DETECTION
 
-39. Detect direct user edits (selection, typing, manual modifications). (**Edge Case 14**)
-40. Pause automation immediately
-41. Resume only after editor is idle
+39. **Human Active Lock**: Detect direct user edits (selection, typing, manual modifications). (**Edge Case 14**)
+40. **Veto AI Actions**: Immediately transition all overlapping AI intents to `WAIT_HUMAN_LOCK`.
+41. **Provisional Rollback**: If the human edit overlaps with a provisional AI commit, issue an authoritative `ROLLBACK` for the AI intent.
+42. **Resume Policy**: AI may only resume sync after the `HUMAN_ACTIVE` lock is released and state hash is re-verified.
 
 ---
 

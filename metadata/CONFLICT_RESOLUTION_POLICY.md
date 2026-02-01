@@ -22,6 +22,7 @@ Conflicts are detected during the **Phase 3 (Batching)** and **Phase 4 (Executio
 | **Structural vs Cosmetic** | ⚠️ | Structural Precedence | Structural wins; Cosmetic is `ROLLED_BACK`. |
 | **Structural vs Structural** | ❌ | Mandatory Quarantine | Both intents `QUARANTINED`. Manual resolution required. |
 | **Destructive vs Any** | ❌ | Mandatory Quarantine | All overlapping intents `QUARANTINED`. Snapshot retained. |
+| **Human vs AI** (Any Overlap) | 👑 | Human Supremacy | Human intent immediately trumps AI. AI intent transitions to `WAIT`. |
 | **Identity Mismatch** | ❌ | Panic / Quarantine | Immediate engine hierarchy lock. |
 
 ---
@@ -43,6 +44,13 @@ If two structural changes (e.g., competing parentage) or a destructive change (D
 1. **Freeze**: Both intents are marked as `QUARANTINED`.
 2. **Revert**: Engines are ordered to revert to the last authoritative `FINAL` hash.
 3. **Escalate**: A `CONFLICT_EVENT` is broadcast to the human with a forensic dump of both intents.
+
+### D. Human Supremacy (The "Anti-Fighting" Lock)
+If a human is actively manipulating an object (lock_type: `HUMAN_ACTIVE`):
+1. **Veto**: Any AI intent touching the locked UUID is automatically deferred.
+2. **Wait State**: AI intents transition to `WAIT_HUMAN_LOCK`.
+3. **Rollback**: If an AI intent was provisionally applied during the lock window, it is instantly `ROLLED_BACK`.
+4. **Adaptive Deferral**: The AI receives a `WAIT_HUMAN_LOCK` status and must exponentially back-off until the lock is released.
 
 ---
 

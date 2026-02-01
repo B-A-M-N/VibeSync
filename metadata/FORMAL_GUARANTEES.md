@@ -11,6 +11,7 @@ This document defines the contractual behavior of the VibeSync Orchestrator. The
 - **Causal Hash-Chaining**: Every entry in the Write-Ahead Log (WAL) contains a cryptographic hash of the previous entry. The history of "Reality" is tamper-evident and immutable.
 - **Intent Budgeting**: Every session is assigned a temporal budget. Exceeding the "Mutation-Per-Minute" (MPM) threshold triggers mandatory trust degradation.
 - **Conflict Resolution**: VibeSync guarantees deterministic resolution of Cosmetic conflicts using Monotonic Intent ID tie-breaking. Structural and Destructive conflicts are guaranteed to be detected and **QUARANTINED** to prevent silent semantic loss.
+- **Human Supremacy**: VibeSync guarantees that human intents always trump AI intents. Active human manipulation creates a `HUMAN_ACTIVE` lock that veteos all overlapping AI mutations.
 - **The Golden Rule**: If resolving a conflict requires guessing user intent, the system must stop and escalate to the human arbiter.
 - **Speculative Finality**: The system guarantees that "Fast Path" mutations (Cosmetic/Transforms) are visible immediately while being verified asynchronously. Finality is deferred until background hash verification is complete.
 - **Atomic Rollback Guarantee**: The system guarantees that any speculative state which fails background verification will be automatically and deterministically rolled back to the last known authoritative state.

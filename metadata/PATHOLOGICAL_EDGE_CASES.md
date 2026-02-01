@@ -41,6 +41,7 @@ This document defines the mechanical defenses against three classes of pathologi
 | **Nested Prefabs** | ✅ | Depth-aware Identity Metadata |
 | **Cyclic Parenting** | ✅ | Central DAG Validation (Pre-mutation) |
 | **Partial Deletes** | ✅ | Closure-aware Snapshots |
+| **Human-AI Racing** | ✅ | `HUMAN_ACTIVE` Veto Lock |
 
 ---
 *VibeSync: Engineering Reality.*

@@ -22,21 +22,14 @@ class ReflexWorker:
         # Directory paths...
 
     def load_gem_prompt(self):
-        prompt_path = "metadata/GEMS_SYSTEM_PROMPTS.md"
+        gem_name = f"{self.engine}-{self.role.lower()}"
+        prompt_path = f".gemini/gems/{gem_name}.md"
+        
         if not os.path.exists(prompt_path):
             return f"You are the {self.engine} {self.role}."
             
         with open(prompt_path, "r") as f:
-            content = f.read()
-            
-        # Extract the specific role's block from the MD file
-        # This is a simple parser looking for the Role header
-        role_marker = f"Agent {'Beta' if self.engine == 'blender' else 'Gamma'}-{'1' if self.role == 'Foreman' else '2'}"
-        try:
-            role_block = content.split(role_marker)[1].split("```text")[1].split("```")[0].strip()
-            return role_block
-        except:
-            return f"You are the {self.engine} {self.role}."
+            return f.read()
 
     def think(self, work_order):
         # Foreman: Convert High-level intent to strictly mapped Opcode

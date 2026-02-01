@@ -1,10 +1,11 @@
-## PHASE -4 — LOG INGESTION (MANDATORY)
+## PHASE -4 — LOG INGESTION & BIOS VALIDATION (MANDATORY)
 
-Before starting any task, the AI MUST ingest the recent forensic history to avoid "Tail-Chasing."
+Before starting any task, the AI MUST ingest the recent forensic history and verify its BIOS Gem is loaded.
 
-1.  **Call**: `get_operation_journal`.
+1.  **Ingest**: Call `get_operation_journal`.
 2.  **Verify**: Identify the latest `FINAL` hash.
-3.  **Signal**: Call `ingest_forensic_logs(log_hash: latest_hash)`.
+3.  **Ground**: Call `ingest_forensic_logs(log_hash: latest_hash)`.
+4.  **Align**: Read the local BIOS Gem from `.gemini/gems/[role].md` to ensure protocol adherence.
 
 ---
 

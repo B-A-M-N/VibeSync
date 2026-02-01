@@ -18,7 +18,11 @@
    - `git push` is restricted to codebase releases.
 6. **Safe Bridge Workflow**: 
    - Sandbox testing, incremental sync, and material naming parity (Poiyomi) required.
-7. **Speculative Commit**: Use Provisional Commit for Fast Path (Transforms) to remove UI blocking; verify asynchronously.
+7. **Speculative Commit Protocol**: 
+   - Mechanically classify as **Cosmetic** (Fast Path), **Structural** (Slow Path), or **Destructive** (Guarded).
+   - Use **PROVISIONAL** status for Fast Path to remove UI blocking.
+   - Promotion to **FINAL** requires background verification.
+   - Mandatory **ROLLBACK** on desync > epsilon (1e-5).
 2. **Targeting**: Use UUIDs for precise state and `sem:RoleName` for functional intent.
 3. **Git LFS**: Do not parse binary files tracked by Git LFS.
 3. **Iron Box**: Every mutation MUST be atomic. Use `begin_atomic_operation`.

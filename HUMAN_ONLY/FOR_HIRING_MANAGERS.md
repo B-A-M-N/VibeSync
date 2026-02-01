@@ -20,8 +20,8 @@ VibeSync treats both the AI and the engines as **hostile operators**.
 
 ## ⚛️ 3. Atomic Sync & Transactional Integrity
 Synchronizing state between two different engines (with different coordinate systems and memory models) requires absolute atomicity.
-*   **Mechanism**: Every sync operation follows a formal lifecycle: `submit_intent` -> `validate_intent` -> `begin_atomic_operation` -> [Mutation] -> `verify_engine_state` -> `commit_atomic_operation`.
-*   **Hash-Based Verification**: We use binary-level hashes to prove reality matches intent. If the post-mutation hash in Unity doesn't match the source in Blender, the transaction is automatically rolled back.
+*   **Mechanism**: Every sync operation follows a formal lifecycle: `submit_intent` -> `validate_intent` -> `begin_atomic_operation` -> [Mutation] -> **Provisional Commit (Fast Path)** -> `verify_engine_state` (Async) -> `commit_atomic_operation` (Finalize). This separates user-visible immediacy from ontological finality.
+*   **Safety**: If background verification fails, the Orchestrator issues an authoritative **Rollback**, restoring the object graph to the last known-good state via engine undo tokens or snapshots.
 *   **Outcome**: One AI Intent = One Clean, Verified Step across the entire cluster.
 
 ## 🏃 4. Performance Engineering & Main-Thread Safety

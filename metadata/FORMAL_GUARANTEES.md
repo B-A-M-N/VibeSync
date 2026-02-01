@@ -11,6 +11,8 @@ This document defines the contractual behavior of the VibeSync Orchestrator. The
 - **Causal Hash-Chaining**: Every entry in the Write-Ahead Log (WAL) contains a cryptographic hash of the previous entry. The history of "Reality" is tamper-evident and immutable.
 - **Intent Budgeting**: Every session is assigned a temporal budget. Exceeding the "Mutation-Per-Minute" (MPM) threshold triggers mandatory trust degradation.
 - **Conflict Resolution (LWW)**: In cases of simultaneous edits where `lock_object` was bypassed, VibeSync enforces **Last-Writer-Wins** based on the Orchestrator's monotonic ID arrival time.
+- **Speculative Finality**: The system guarantees that "Fast Path" mutations (Cosmetic/Transforms) are visible immediately while being verified asynchronously. Finality is deferred until background hash verification is complete.
+- **Atomic Rollback Guarantee**: The system guarantees that any speculative state which fails background verification will be automatically and deterministically rolled back to the last known authoritative state.
 - **Deterministic Convergence**: The system guarantees that both engines will eventually reach the same hash state once the intent queue is empty.
 
 ---

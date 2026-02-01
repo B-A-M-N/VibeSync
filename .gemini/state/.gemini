@@ -5,3 +5,5 @@
 - Conflicts must be surfaced, not hidden.
 - Rollback is preferable to corruption.
 - Follow absolute invariants in metadata/PROCEDURAL_FLOW.md
+- **Adversarial Pre-flight**: Run `python3 scripts/preflight.py` to clear state locks or zombie processes.
+- **Git LFS**: State files should reference LFS-tracked assets by hash or UUID, never raw content.

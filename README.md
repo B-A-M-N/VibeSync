@@ -80,12 +80,17 @@ graph TD
 ## 🏎️ Quick Start
 1.  **Install Prerequisites**: Ensure you have **Go 1.24+**, **Python 3.10+**, **Unity 2022.3+**, **Blender 3.6+**, and **Git LFS**.
 2.  **Initialize LFS**: `git lfs install`
-3.  **Start Orchestrator**: 
+3.  **Configure Git Logging**:
+    ```bash
+    git config --global user.name "Your Name"
+    git config --global user.email "your@email.com"
+    ```
+4.  **Start Orchestrator**: 
     ```bash
     cd mcp-server && go run main.go contract.go
     ```
-3.  **Connect Adapters**: Follow the **[Handshake Guide](HUMAN_ONLY/INSTALL.md)** to install and launch the Unity and Blender plugins.
-4.  **Sync Test**: Use the AI or CLI to run `handshake_init` followed by `sync_transform` to verify the connection.
+5.  **Connect Adapters**: Follow the **[Handshake Guide](HUMAN_ONLY/INSTALL.md)** to install and launch the Unity and Blender plugins.
+6.  **Sync Test**: Use the AI or CLI to run `handshake_init` followed by `sync_transform` to verify the connection.
 
 > [!IMPORTANT]
 > ⚠️ **Not Technical? Start Here!**  
@@ -166,9 +171,21 @@ graph LR
 <details>
 <summary><b>View Tool Reference Primitives</b></summary>
 
+## 🤖 How to Obey This Repo (AI Agents)
+
+This repository is a **Governed Creation Kernel**. To avoid mechanical rejection or desync, all AI agents MUST:
+
+1.  **Check for Local Orders**: Before acting in a subdirectory (e.g., `mcp-server/`, `unity-bridge/`), read the local `.gemini` or `README.md`. Local rules **SUPERSEDE** root rules.
+2.  **Run Pre-flight**: Use `python3 scripts/preflight.py` if the bridge is unresponsive.
+3.  **State-Linked Commits**: When using `commit_atomic_operation`, you must provide the latest `wal_hash` from `get_bridge_wal_state` as the `ProofOfWork`.
+4.  **Zero-Trust Verify**: Never assume a mutation succeeded. Always call `verify_engine_state` after a change.
+
+---
+
 ### 1. 🏛️ Orchestrator Primitives
 *   **`handshake_init`**: Establishes trust and rotates session tokens.
 *   **`decommission_bridge`**: Broadcasts an emergency hierarchy lock to all connected engines.
+*   **`adversarial_preflight`**: (Python script) Resolves zombie processes and port conflicts before boot.
 *   **`emit_diag_bundle`**: Generates a ZIP of WAL, events, and state for diagnostics.
 *   **`get_operation_journal`**: Returns the Write-Ahead Log (WAL) telemetry.
 

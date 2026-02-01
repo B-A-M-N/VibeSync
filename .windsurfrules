@@ -1,9 +1,12 @@
 # Windsurf Behavior: VibeSync Distributed Kernel
 
 ## 🏛️ VibeSync Protocol Mandates
+- **Adversarial Pre-flight**: Run `python3 scripts/preflight.py` before troubleshooting or starting orchestration.
+- **Path Discovery Gate**: Read the local `.gemini` or `README.md` before any mutation in a directory. Local rules provide **recursive authority** and override root mandates.
 - **Governed Flow**: Adhere to [**Master Procedural Flow**](metadata/PROCEDURAL_FLOW.md) and [**AI Workflow**](metadata/AI_WORKFLOW.md).
 - **Zero-Trust**: Read-Before-Write (`read_engine_state`) is mandatory.
 - **Resiliency**: Use `sem:` prefix for functional lookups; use UUIDs for state commits.
+- **Git LFS**: Binary assets are tracked via LFS; do not parse directly.
 - **Iron Box**: All mutations MUST be wrapped in atomic transactions (`begin_atomic_operation`).
 - **Forensics**: Your rationales are cryptographically chained in the WAL. Provide technical depth.
 - **Fail-Fast**: Respect the heartbeat and state gates. If status is `PANIC` or `QUARANTINE`, stop.

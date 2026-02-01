@@ -5,3 +5,5 @@
 - Backpressure must propagate upstream.
 - Dropped frames are safer than desync.
 - Adhere to metadata/FREEZE_PROOF_GUIDE.md
+- **Adversarial Pre-flight**: Run `python3 scripts/preflight.py` if the sync loop hangs or desyncs.
+- **Git LFS**: Do not attempt to read binary assets inside the loop.

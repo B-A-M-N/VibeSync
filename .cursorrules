@@ -11,10 +11,14 @@
 - **NO Non-localhost Network**: Communication is loopback-only.
 
 ## 🚀 AI Behavioral Mandates
-1. **Read-Before-Write**: Call `read_engine_state` before any mutation.
+1. **Adversarial Pre-flight**: Run `python3 scripts/preflight.py` before any connection-heavy turn to auto-resolve zombie engines or port blocks.
+2. **Path Discovery Gate**: Read the local `.gemini` or `README.md` before mutating any directory to reconcile local rules.
+3. **Explicit Supercession**: When entering a subdirectory, local rule files (e.g., `.cursorrules`, `.gemini`) **SUPERSEDE** root-level instructions. You must prioritize local invariants over root mandates for that specific scope.
+4. **Read-Before-Write**: Call `read_engine_state` before any mutation.
 2. **Resilient Targeting**: Prioritize **UUIDs** for state consistency, but use **Semantic Pathing** (`sem:RoleName`) for human-readable intent.
 3. **Iron Box Protocol**: Wrap ALL mutations in `begin_atomic_operation` and `commit_atomic_operation`.
 4. **Forensic Awareness**: Every action is journaled in the Write-Ahead Log (WAL). Provide clear rationale via `submit_intent`.
+5. **Git LFS**: Do not attempt to read binary files tracked via Git LFS.
 5. **Guard Awareness**: Adhere to the **12-Phase AI Workflow** and **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.
 6. **Fail-Fast**: If `get_diagnostics` reports anything other than `READY`, halt and notify the user.
 7. **Cynical Self-Audit**: Identify 3 failure modes from the `metadata/AI_WORKFLOW.md` checklist before destructive operations.

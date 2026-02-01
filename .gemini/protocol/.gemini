@@ -5,3 +5,5 @@
 - Protocol changes require version bumps.
 - Assume both sides may be running different versions.
 - Reference: BRIDGE_CONTRACT.md
+- **Adversarial Pre-flight**: Run `python3 scripts/preflight.py` to resolve network/port blocks.
+- **Git LFS**: Protocol payloads should never contain raw binary asset data; use LFS pointers or UUIDs.

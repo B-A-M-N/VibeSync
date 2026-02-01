@@ -74,6 +74,12 @@ By contributing, you certify that you own the code you are submitting or have th
 **Sign-off Procedure**:
 All commits must be signed off to certify the Developer Certificate of Origin (DCO).
 
+Ensure your local git identity is configured so your sign-off is accurate:
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your@email.com"
+```
+
 ```bash
 git commit -s -m "feat: implement atomic handshake retry logic"
 ```

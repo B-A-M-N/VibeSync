@@ -71,11 +71,11 @@ public static class VibeBridgeServer
             if (_listener != null) StopServer();
             
             _listener = new HttpListener();
-            _listener.Prefixes.Add("http://127.0.0.1:8085/");
+            _listener.Prefixes.Add("http://127.0.0.1:8087/");
             _listener.Start();
             _listenerThread = new Thread(Listen);
             _listenerThread.Start();
-            Debug.Log("🛡️ VibeSync Unity Bridge: Listening on port 8085");
+            Debug.Log("🛡️ VibeSync Unity Bridge: Listening on port 8087");
         }
         catch (Exception e)
         {

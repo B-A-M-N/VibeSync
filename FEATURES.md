@@ -5,9 +5,13 @@
 | **Logistics** | `handshake_init` | Implemented (v0.3 Go) | **High** | Free |
 | | `update_engine_heartbeat`| Implemented (Internal) | **High** | Free |
 | | `get_diagnostics` | Implemented (v0.3 Go) | Medium | Free |
+| | `stabilize_and_start` | Implemented (v0.4) | **Critical** | Free |
+| | `get_bridge_pulse` | Implemented (v0.4) | **High** | Free |
 | **Security** | `decommission_bridge` | Implemented (v0.3 Go) | **High** | Free |
 | | `payload_audit` | Implemented (Internal) | **High** | Free |
 | | `emit_diag_bundle` | Implemented (v0.3 Go) | **High** | Free |
+| | `verify_identity_parity` | Implemented (v0.4) | **High** | Free |
+| | `execute_governed_mutation` | Implemented (v0.4) | **High** | Free |
 | **Infrastructure**| `sync_asset_atomic` | Implemented (v0.3 Go) | **High** | Free |
 | | `get_operation_journal` (WAL)| Implemented (v0.3 Go) | **High** | Free |
 | | `deep_forensic_audit` | Planned (v0.4) | **High** | **Early Access (Free)** |

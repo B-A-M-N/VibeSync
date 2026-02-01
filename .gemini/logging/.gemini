@@ -5,3 +5,5 @@
 - Do NOT suppress warnings or errors.
 - Silent desync is unacceptable.
 - Log symmetry across Go, C#, and Python is mandatory.
+- **Adversarial Pre-flight**: Log all cleanup actions (zombies killed, ports freed) for the forensic journal.
+- **Git LFS**: Do not log contents of binary assets; log their LFS hashes only.

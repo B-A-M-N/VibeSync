@@ -162,6 +162,7 @@
 * Transactions are atomic — no partial state commits
 * Editor integrity is prioritized over AI/bridge automation
 * Cross-system versioning/schema checks are mandatory
+* **Numerical Invariance**: Float-based desyncs below `1e-5` (epsilon) are treated as matched to prevent rounding-driven desync loops.
 * Automation knows when to pause or stop
 * No Python/Unity object references are persisted beyond safe boundaries
 * **Freeze-Proof Discipline**: Never block the main thread; use async I/O and queue-based mutations exclusively.

@@ -1,5 +1,6 @@
 # HANDSHAKE ORDER IS FIXED
 
+- **Pre-flight First**: Run `python3 scripts/preflight.py` before initial handshake.
 - Startup sequence is intentional.
 - Do NOT reorder handshake steps.
 - Timeouts are not errors; they are signals.

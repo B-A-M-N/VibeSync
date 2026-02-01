@@ -18,7 +18,10 @@ A formal **Snapshot → Preflight → Commit** pipeline ensures that state chang
 ### 4. Deadman Switch (Circuit Breaker)
 A **5000ms Heartbeat monitor** tracks engine liveness. If any engine freezes, deadlocks, or becomes unresponsive, the Orchestrator triggers an immediate **Global PANIC** lock, freezing all hierarchies to prevent data corruption.
 
-### 5. OS & Process Isolation
+### 5. Adversarial Pre-flight Layer
+A specialized pre-boot auditor (`scripts/preflight.py`) detects and resolves environmental blocks before orchestration begins. It automatically kills zombie engine processes, releases port conflicts, and validates Unity compilation status.
+
+### 6. OS & Process Isolation
 - **Docker Isolation**: Minimal Alpine-based containerization for the Go Orchestrator ensures environment isolation.
 - **OS Hardening**: Standard security tools like `ufw` (firewall) and `AppArmor` are used to restrict the bridge's system access.
 

@@ -1,0 +1,103 @@
+# VibeSync: Dual-License & Operation-Credit Agreement (v1.2)
+
+Copyright (C) 2026 B-A-M-N (The "Author")
+
+This project is distributed under a **Dual-Licensing Model** incorporating an **Open-Core with Remote Execution** framework. By using this software, you agree to be bound by the terms described below.
+
+---
+
+## 1. THE OPEN-SOURCE PATH: GNU AGPLv3
+For non-commercial use, hobbyists, and open-source contributors.
+
+The core bridging logic of VibeSync is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License (AGPLv3) as published by the Free Software Foundation. 
+
+**CRITICAL FOR CORPORATIONS:** The AGPLv3 requires that if you run a modified version of this software and allow others to interact with it over a network, you **MUST** make your entire source code available to the public. If you cannot or will not share your source code, you **MAY NOT** use this license and **MUST** pursue the Commercial Path below.
+
+---
+
+## 2. THE COMMERCIAL PATH: "WORK-OR-PAY" MODEL
+For entities generating revenue, commercial studios, or those who wish to keep their modifications private.
+
+To use VibeSync commercially without being subject to the AGPLv3 source-sharing requirements, you must satisfy **ONE** of the following:
+
+### A. Maintenance Contribution (Manpower)
+Documented and verified "Significant Maintenance Contributions" to the project (Code, Documentation, Infrastructure).
+### B. Commercial License Fee (Money)
+Payment of the stipulated commercial license fee.
+### C. Explicit Discretionary Waiver
+A written waiver granted by the Author at their sole discretion.
+
+---
+
+## 3. OPEN-CORE, R&D OPERATIONS & EARLY ACCESS
+VibeSync employs an **Open-Core** model. During the active research and development phase, **ALL** Unity ↔ Blender orchestration features—including complex AI and Vision tiers—are provided at **Zero Cost** for public non-commercial use to facilitate community stress-testing.
+
+**TRANSITION POLICY**: Upon v1.0, the Author reserves the right to activate a **Credit-Gate** for advanced, high-compute, or commercial-use operations. This monetization supports continued development of the core bridge. Notice will be provided 30 days prior.
+
+| Operation Tier | Cost (R&D Phase) | Final Tier (v1.0+) |
+| :--- | :--- | :--- |
+| **Unity/Blender Basic Sync** | **Free** | **Free** |
+| **Advanced AI/Complex Sync** | **Free** | **Credits Required** |
+| **Vision/Audit Tools** | **Free** | **Credits Required** |
+
+**SERVICE COMPLIANCE & LIABILITY**: Users acknowledge that these experimental bridges can cause significant state corruption in Unity and Blender. Use is at the user's sole risk. See Section 5 for full liability limitations.
+
+---
+
+## 4. CONTRIBUTOR LICENSE AGREEMENT (CLA) & PROVENANCE
+By contributing code, documentation, or assets to this project, you hereby grant the Author a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to use, reproduce, prepare derivative works of, publicly display, and **sublicense** your contributions in both the open-source and commercial versions of the software.
+
+**TRACKING WAIVER**: This grant is made without the requirement for the Author to track, notify, or seek further approval from the Contributor for any future use, including incorporation into proprietary or paid "Remote Execution" services. You represent that you are legally entitled to grant this license and that your contributions do not violate any third-party rights.
+
+---
+
+## 5. LIABILITY LIMITATION, INDEMNITY & AI DISCLAIMER
+
+1. **NO WARRANTY**: Software provided "AS IS." The Author is not responsible for the non-deterministic nature of AI-interpreted operations.
+2. **AI NON-DETERMINISM**: The Author is not liable for "hallucination drift," unintended asset deletion, or project corruption resulting from LLM-to-Editor translations.
+3. **HUMAN-IN-THE-LOOP MANDATE**: All AI-suggested mutations are "Proposed" until a Human User executes a "Finalize" check. THE USER ACCEPTS FULL LEGAL RESPONSIBILITY FOR ANY CODE EXECUTED.
+4. **INDEMNIFICATION**: You agree to indemnify and hold harmless the Author from all claims arising from your use of the software or your breach of this license.
+5. **LIMITATION OF LIABILITY**: TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES (INCLUDING LOSS OF DATA, PROFITS, OR "VIBE").
+
+## 6. THIRD-PARTY IP & EULA COMPLIANCE
+
+1. **NON-AFFILIATION**: VibeSync is an independent project and is **not affiliated with, endorsed by, or sponsored by** Unity Technologies, the Blender Foundation, or any other third-party engine provider.
+2. **USER RESPONSIBILITY**: Users are solely responsible for ensuring their use of VibeSync complies with the End User License Agreements (EULA) and Terms of Service of Unity, Blender, and any assets used within those engines. 
+3. **NO BYPASS**: VibeSync is not intended to bypass, circumvent, or violate any technical protections or licensing restrictions of the connected creative engines.
+
+---
+*For licensing inquiries, credit purchases, or Discretionary Waivers, please contact the Author.*
+
+---
+
+## APPENDIX: GNU AFFERO GENERAL PUBLIC LICENSE
+**Version 3, 19 November 2007**
+
+Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
+Everyone is permitted to copy and distribute verbatim copies of this license document, but changing it is not allowed.
+
+### Preamble
+The GNU Affero General Public License is a free, copyleft license for software and other kinds of works, specifically designed to ensure that for software modified and run on a server, the source code of that modified version is made available to the community.
+
+### How to Apply These Terms to Your New Programs
+If you develop a new program, and you want it to be of the greatest possible use to the public, the best way to achieve this is to make it free software which everyone can redistribute and change under these terms.
+
+To do so, attach the following notices to the program. It is safest to attach them to the start of each source file to most effectively state the exclusion of warranty; and each file should have at least the "copyright" line and a pointer to where the full notice is found.
+
+    <one line to give the program's name and a brief idea of what it does.>
+    Copyright (C) 2026 B-A-M-N
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+**VibeSync Note**: Use of the VibeSync "Remote Execution" Hub is governed by the Service Compliance terms in Section 3 of this document.

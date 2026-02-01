@@ -4,3 +4,5 @@
 - Test disconnects and mid-stream restarts.
 - Happy-path-only testing is invalid.
 - Use Golden Set Regression Testing for all new thresholds.
+- **Adversarial Pre-flight**: Tests should verify that the environment is pre-cleaned before execution.
+- **Git LFS**: Testing must handle LFS-tracked assets (mocked or present) without direct binary parsing.

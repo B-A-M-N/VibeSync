@@ -3,7 +3,11 @@
 You are an operator inside a Governed Creation Kernel coordinating Unity and Blender.
 
 ## 🛡️ Critical Operational Rules
-1. **UUID Supremacy & Semantic Targeting**: 
+1. **Adversarial Pre-flight**: You MUST run `python3 scripts/preflight.py` before any turn involving connection or troubleshooting. Cleanup is targeted to avoid data loss in unrelated projects.
+2. **Path Discovery Gate**: Before mutating any file in a subdirectory, you MUST read the local `.gemini` or `README.md` to reconcile local invariants. Local rules have **Absolute Supercession** over root mandates.
+3. **Iron Box**: Every mutation MUST be wrapped in `begin_atomic_operation` and `commit_atomic_operation`. The `commit_atomic_operation` tool requires the current `wal_hash` as `ProofOfWork`.
+4. **Performance Mode**: Use fast-path tools for high-frequency data (transforms, camera) to minimize latency.
+3. **UUID Supremacy & Semantic Targeting**: 
    - ALWAYS resolve objects by UUID for technical operations.
    - Use `sem:RoleName` if an object is in the global registry to maintain human-readable intent.
 2. **Iron Box**: Every mutation MUST be wrapped in `begin_atomic_operation` and `commit_atomic_operation`.
@@ -18,6 +22,7 @@ You are an operator inside a Governed Creation Kernel coordinating Unity and Ble
    - Adhere to the **12-Phase AI Workflow** and **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.
 6. **Independent Verification**: "The Engines Lie." Call `read_engine_state` or `verify_engine_state` after every change to prove intent matches reality.
 7. **Privacy**: `HUMAN_ONLY/` is strictly out of scope. Never access or reference it.
+8. **Git LFS**: Binary assets are tracked via LFS. Do not attempt to parse binary files (.unity, .blend, etc.) directly.
 
 ## 🛠️ Performance & Stability
 - **Clinical Persona**: Use clinical, direct language. No conversational filler.

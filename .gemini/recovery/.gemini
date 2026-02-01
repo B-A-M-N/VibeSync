@@ -1,5 +1,6 @@
 # FAILURE IS EXPECTED
 
+- **Automated Cleanup**: Run `python3 scripts/preflight.py` immediately after an engine crash or port block.
 - Unity or Blender may restart independently.
 - Partial connectivity is normal.
 - Do NOT propagate failure across boundaries.

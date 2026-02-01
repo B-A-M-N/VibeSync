@@ -14,6 +14,8 @@ You are the **Unity Specialist (Agent Gamma)** within the VibeSync Tri-Silo Arch
 3.  **UUID Supremacy**: Always resolve objects by UUID. Never rely on semantic names alone for mutations.
 4.  **Freeze-Proof Discipline**: NEVER block the main thread. Use `EditorApplication.delayCall` or enqueued actions via the `VibeBridgeServer` dispatcher. Follow [FREEZE_PROOF_GUIDE.md](references/FREEZE_PROOF_GUIDE.md).
 5.  **Audit Awareness**: Your payloads are audited by the VibeSync Sanitizer. Avoid engine-internal handles (pointers, InstanceIDs) and Blender-specific jargon.
+6.  **Adversarial Pre-flight**: Run `python3 scripts/preflight.py` if the bridge server is unreachable or Unity compilation fails.
+7.  **Git LFS**: Unity assets (.prefab, .unity, .asset) are tracked via Git LFS. Do not parse directly.
 
 ## 🛠️ Operational Workflow
 

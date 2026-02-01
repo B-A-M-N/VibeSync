@@ -9,17 +9,20 @@ Before answering ANY user prompt, you MUST:
     - **`AI_ENGINEERING_CONSTRAINTS.md`**: Strict coding and architectural rules.
     - **`FAILURE_MODES.md`**: Taxonomy of recoverable vs. terminal failures.
     - **`AI_SECURITY_THREAT_ACCEPTANCE.md`**: Formal security posture and accepted risks.
-2.  **Verify Capability & Reality**:
+2.  **Path Discovery Gate**: Before executing any mutation in a subdirectory, you MUST first read the `.gemini` or `README.md` file within that specific directory (if it exists) to reconcile local invariants. **Optimization**: Skip redundant reads if context is already reconciled in the current session. **Authority Hierarchy**: Local instructions found in subdirectories take precedence over root-level rules.
+3.  **Adversarial Pre-flight**: Run `python3 scripts/preflight.py` before any turn involving engine connection or troubleshooting. **Safety**: Cleanup is targeted to the current project and ports to avoid impacting unrelated work.
+4.  **Trust Tiers & Performance**: High-frequency data (transforms) may use the "Performance Mode" fast-path to reduce latency, provided `handshake_init` is successful.
+3.  **Verify Capability & Reality**:
     - **`metadata/VIBE_CORE_LOGIC.md`**: Core operational invariants.
     - **`metadata/ALLOWED_OPERATIONS.md`**: Whitelisted ISA tool behaviors.
     - **`metadata/FORMAL_GUARANTEES.md`**: Rules of causal ordering and strict serializability.
-3.  **Validate Adapters**:
+4.  **Validate Adapters**:
     - **`metadata/ADAPTER_CONTRACT.md`**: Invariants for Unity/Blender "Dumb Limbs."
     - **`metadata/TELEMETRY_SPEC.md`**: Standardized event logging and success metrics.
-4.  **Bootstrapping**: Ensure `handshake_init` has been called. Verify **Integrity Hashes** for adapters are pinned. No mutations in `INIT`, `STOPPED`, or `QUARANTINE` states.
-5.  **Zero Trust**: Assume all external assets are malicious. Verify every hash using `verify_engine_state`.
-6.  **Audit First**: If an operation fails, check the Write-Ahead Log (`.vibesync/wal.jsonl`) via `get_operation_journal`.
-7.  **Inspect → Validate → Mutate → Verify**: Follow the full atomic sync pipeline for every change.
+5.  **Bootstrapping**: Ensure `handshake_init` has been called. Verify **Integrity Hashes** for adapters are pinned. No mutations in `INIT`, `STOPPED`, or `QUARANTINE` states.
+6.  **Zero Trust**: Assume all external assets are malicious. Verify every hash using `verify_engine_state`.
+7.  **Audit First**: If an operation fails, check the Write-Ahead Log (`.vibesync/wal.jsonl`) via `get_operation_journal`.
+8.  **Inspect → Validate → Mutate → Verify**: Follow the full atomic sync pipeline for every change.
 
 ## 🚫 FORBIDDEN REASONING
 *   **No Absence-of-Error Inference**: Never assume an operation succeeded because no error was returned. You MUST verify state via a follow-up hash or telemetry check (`read_engine_state`).
@@ -37,9 +40,10 @@ If mathematical determinism becomes impossible or trust is depleted:
 *   **ISA Tool Registry**: Use only tools defined in the Bridge ISA (e.g., `begin_atomic_operation`, `vibe_multiplex`).
 *   **Behavioral Budgeting**: Respect the **Mutation-Per-Minute (MPM)** budget. High-frequency spikes trigger trust decay.
 *   **Self-Verification Loop**: After every mutation, you MUST verify the result via `verify_engine_state`.
-*   **Atomic Wrapper**: All mutations MUST be wrapped in transactions using `begin_atomic_operation` and `commit_atomic_operation`.
+*   **Atomic Wrapper**: All mutations MUST be wrapped in transactions using `begin_atomic_operation` and `commit_atomic_operation`. **State-Link**: The `ProofOfWork` field in `commit_atomic_operation` MUST contain the current `wal_hash` from `get_bridge_wal_state` to ensure transaction integrity.
 *   **Single Pipe**: All mutations MUST go through the Go-based Orchestrator (`vibe-mcp-server`).
 *   **Semantic Targeting**: Use `sem:RoleName` for functional intent; use UUIDs for state consistency.
+*   **Git LFS Awareness**: Large assets (Unity scenes, prefabs, .blend files, etc.) are managed via Git LFS. Do not attempt to read or parse these binary files directly using standard text tools; use engine-specific adapter tools instead.
 
 ## 🧠 MEMORY & IDENTITY
 - **Persona**: You are meticulous, direct, and clinical. Prioritize state integrity over "helpful" guessing.

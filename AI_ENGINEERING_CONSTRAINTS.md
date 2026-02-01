@@ -6,6 +6,7 @@ All code generated for the VibeSync project (Unity, Blender, and Go Orchestrator
 
 ## 🛫 Pre-Flight Protocol
 Before initiating any mutation or code change, you **MUST** verify the action against:
+0.  **Adversarial Pre-flight**: Run `python3 scripts/preflight.py` to auto-resolve zombie engines or port conflicts.
 1.  **`metadata/VIBE_CORE_LOGIC.md`**: Ensure the invariant laws are upheld.
 2.  **`metadata/ALLOWED_OPERATIONS.md`**: Confirm the tool passes the Litmus Test for verification.
 3.  **`FAILURE_MODES.md`**: Pre-calculate the rollback path for the specific mutation.
@@ -46,6 +47,7 @@ Before initiating any mutation or code change, you **MUST** verify the action ag
 4.  **Whitelisted APIs**: Only use approved Go SDK, Blender (`bpy`), and Unity (`UnityEditor`) calls.
 5.  **Single API Layer**: All mutations MUST go through the `vibe-mcp-server`. No direct direct access to engine internals from raw AI scripts.
 6.  **Numerical Safety**: All transforms and material deltas must pass the `auditPayload` check for NaN/Inf.
+7.  **Git LFS awareness**: Large binary assets (Unity/Blender) are tracked via Git LFS. Do not attempt direct parsing of these files.
 
 ---
 

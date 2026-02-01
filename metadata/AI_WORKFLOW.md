@@ -4,6 +4,31 @@
 
 ---
 
+## PHASE -1 — ADVERSARIAL PRE-FLIGHT (MANDATORY)
+
+
+
+Before any turn involving connection or mutation, the AI **MUST** verify the environment is clean and reconcile local context.
+
+
+
+1.  **Execute Pre-flight**: Run `python3 scripts/preflight.py`.
+
+2.  **Path Discovery Gate**: Before executing any mutation in a subdirectory, you MUST first read the `.gemini` or `README.md` file within that specific directory to reconcile local invariants. 
+    - **Optimization**: You may skip this read if you have already reconciled the same directory within the current session and no local changes have been detected. 
+    - **Authority Hierarchy**: Local rules in subdirectories override root-level mandates for their scope.
+
+3.  **Performance Mode (High-Frequency)**: For high-frequency data (transforms, playback), use the "Fast Pipe" tools if available. These bypass heavy HMAC/Audit checks in exchange for session-level trust.
+
+3.  **Verify Report**:
+
+ 
+    - If `safe_to_proceed` is `false`, stop and report the specific issues (e.g., Unity compile errors) to the human.
+    - If zombie processes were killed or ports released, acknowledge the cleanup in the rationale.
+3.  **Clear Persistence**: If `get_diagnostics` continues to report `DESYNC` after cleanup, ask for human permission to purge `.vibesync/state.json`.
+
+---
+
 ## PHASE 0 — BOOT & ATTACH
 
 1. Confirm both editors (Unity + Blender) are running and idle.

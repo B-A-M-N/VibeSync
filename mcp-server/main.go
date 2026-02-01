@@ -81,6 +81,14 @@ var (
 	requestCounts = make(map[string]int)
 	rateMu        sync.Mutex
 
+	// Lock Table
+	lockTable = make(map[string]*VibeLock)
+	lockMu    sync.RWMutex
+
+	// Intent Coalescing
+	intentBuffer = make(map[string]*WalEntry)
+	bufferMu     sync.Mutex
+
 	// Visual Thought Markers
 	ActivityFile  = "metadata/bridge_activity.txt"
 	DiscoveryFile = "/home/bamn/ALCOM/Projects/BAMN-EXTO/metadata/vibe_status.json"
@@ -226,6 +234,55 @@ func init() {
 
 	go startSyncLoop()
 	go startHeartbeatWatcher()
+	go startCoalescingLoop()
+}
+
+func startCoalescingLoop() {
+	ticker := time.NewTicker(250 * time.Millisecond)
+	for range ticker.C {
+		flushIntentBuffer()
+	}
+}
+
+func flushIntentBuffer() {
+	bufferMu.Lock()
+	count := len(intentBuffer)
+	if count == 0 {
+		bufferMu.Unlock()
+		return
+	}
+	log.Printf("🌊 VibeSync Batching: Finalizing %d speculative intents", count)
+	
+	// In a full implementation, we'd trigger a combined verification hash here
+	// and promote WAL entries from PROVISIONAL to FINAL.
+	
+	intentBuffer = make(map[string]*WalEntry)
+	bufferMu.Unlock()
+}
+
+func bufferSpeculativeIntent(uuid string, op string, data interface{}) {
+	bufferMu.Lock()
+	defer bufferMu.Unlock()
+	
+	// Create a virtual WalEntry for the buffer
+	intentBuffer[uuid] = &WalEntry{
+		IntentID: uint64(monotonicID),
+		Engine:   "orchestrator",
+		Actor:    "ai",
+		Scope:    WalScope{UUIDs: []string{uuid}, Class: ClassCosmetic},
+		Phase:    PhaseProvisional,
+	}
+}
+
+func checkHumanLock(uuid string) error {
+	lockMu.RLock()
+	defer lockMu.RUnlock()
+	if lock, ok := lockTable[uuid]; ok {
+		if lock.Type == LockHumanActive && time.Now().Before(lock.ExpiresAt) {
+			return fmt.Errorf("WAIT_HUMAN_LOCK: UUID %s is under active human manipulation", uuid)
+		}
+	}
+	return nil
 }
 
 func startSyncLoop() {
@@ -670,14 +727,33 @@ func get_metrics(ctx context.Context, req *mcp.CallToolRequest, args struct{Targ
 }
 
 func sync_material(ctx context.Context, req *mcp.CallToolRequest, args SyncMaterialArgs) (*mcp.CallToolResult, any, error) {
+	if err := checkHumanLock(args.ObjectID); err != nil { return nil, nil, err }
 	data := map[string]interface{}{"id": args.ObjectID, "properties": args.Props}; journalOperation(map[string]interface{}{"type": "intent", "op": "sync_material", "id": args.ObjectID}); sendToEngine("unity", "material/update", "POST", data); sendToEngine("blender", "material/update", "POST", data)
 	return wrapForensicResult("OK"), nil, nil
 }
 
 func sync_transform(ctx context.Context, req *mcp.CallToolRequest, args SyncTransformArgs) (*mcp.CallToolResult, any, error) {
+	if err := checkHumanLock(args.ObjectID); err != nil { return nil, nil, err }
 	for _, v := range append(append(args.Position, args.Rotation...), args.Scale...) { if math.IsNaN(v) || math.IsInf(v, 0) { return nil, nil, fmt.Errorf("NUMERICAL_INSTABILITY") } }
-	data := map[string]interface{}{"id": args.ObjectID, "transform": map[string]interface{}{"pos": args.Position, "rot": args.Rotation, "sca": args.Scale}}; sendToEngine("unity", "transform/set", "POST", data); sendToEngine("blender", "transform/set", "POST", data)
-	return wrapForensicResult("OK"), nil, nil
+	
+	data := map[string]interface{}{"id": args.ObjectID, "transform": map[string]interface{}{"pos": args.Position, "rot": args.Rotation, "sca": args.Scale}}
+	
+	// Mechanical Floor: Buffer the intent for coalescing
+	bufferSpeculativeIntent(args.ObjectID, "sync_transform", data)
+	
+	// Speculative Execution: Background send to engines
+	go sendToEngine("unity", "transform/set", "POST", data)
+	go sendToEngine("blender", "transform/set", "POST", data)
+	
+	journalOperation(map[string]interface{}{
+		"type": "intent", 
+		"op": "sync_transform", 
+		"id": args.ObjectID, 
+		"phase": PhaseProvisional,
+		"class": ClassCosmetic,
+	})
+	
+	return wrapForensicResult("PROVISIONAL_OK"), nil, nil
 }
 
 func sync_camera(ctx context.Context, req *mcp.CallToolRequest, args SyncCameraArgs) (*mcp.CallToolResult, any, error) {
@@ -743,6 +819,27 @@ func invoke_specialist(ctx context.Context, req *mcp.CallToolRequest, args Invok
 	dispatchVibeEvent(LevelInfo, "specialist_invoked", args.IntentID, "DELEGATE", map[string]interface{}{"specialist": args.SpecialistID, "hash": args.CurrentHash})
 	p := fmt.Sprintf("STATELESS SPECIALIST INVOCATION\nTarget: %s\nCurrent Hash: %s\nIntent: %v", args.SpecialistID, args.CurrentHash, args.TargetIntent)
 	return wrapForensicResult(p), nil, nil
+}
+
+func apply_lock(ctx context.Context, req *mcp.CallToolRequest, args ApplyLockArgs) (*mcp.CallToolResult, any, error) {
+	lockMu.Lock()
+	defer lockMu.Unlock()
+	lockTable[args.UUID] = &VibeLock{
+		UUID:      args.UUID,
+		Type:      args.LockType,
+		Timestamp: time.Now(),
+		ExpiresAt: time.Now().Add(30 * time.Second),
+	}
+	updateBridgeActivity(fmt.Sprintf("KERNEL: LOCK_%s", args.UUID))
+	return wrapForensicResult("LOCKED"), nil, nil
+}
+
+func release_lock(ctx context.Context, req *mcp.CallToolRequest, args ReleaseLockArgs) (*mcp.CallToolResult, any, error) {
+	lockMu.Lock()
+	defer lockMu.Unlock()
+	delete(lockTable, args.UUID)
+	updateBridgeActivity("KERNEL: READY")
+	return wrapForensicResult("RELEASED"), nil, nil
 }
 
 func get_bridge_heartbeat(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
@@ -899,6 +996,10 @@ func main() {
 	mcp.AddTool(server, &mcp.Tool{Name: "emit_diag_bundle", Description: "ISA 10"}, emit_diag_bundle)
 
 	mcp.AddTool(server, &mcp.Tool{Name: "lock_object", Description: "Locking"}, lock_object)
+
+	mcp.AddTool(server, &mcp.Tool{Name: "apply_lock", Description: "Human Lock"}, apply_lock)
+
+	mcp.AddTool(server, &mcp.Tool{Name: "release_lock", Description: "Release Lock"}, release_lock)
 
 	mcp.AddTool(server, &mcp.Tool{Name: "get_metrics", Description: "Metrics"}, get_metrics)
 

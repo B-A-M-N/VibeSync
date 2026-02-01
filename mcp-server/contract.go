@@ -18,6 +18,14 @@ import "time"
 
 type EngineState string
 
+type Actor string
+
+const (
+	ActorHuman Actor = "human"
+	ActorAI    Actor = "ai"
+	ActorSystem Actor = "system"
+)
+
 const (
 	StateStopped  EngineState = "STOPPED"
 	StateStarting EngineState = "STARTING"
@@ -289,6 +297,30 @@ type ObjectIdentity struct {
 	UUID        string     `json:"uuid"`
 	Kind        ObjectKind `json:"kind"`
 	PrefabDepth int        `json:"prefab_depth"`
+}
+
+type LockType string
+
+const (
+	LockHumanActive LockType = "HUMAN_ACTIVE"
+	LockAISpeculative LockType = "AI_SPECULATIVE"
+)
+
+type VibeLock struct {
+	UUID      string    `json:"uuid"`
+	Type      LockType  `json:"type"`
+	Actor     Actor     `json:"actor"`
+	Timestamp time.Time `json:"timestamp"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type ApplyLockArgs struct {
+	UUID     string   `json:"uuid"`
+	LockType LockType `json:"lock_type"`
+}
+
+type ReleaseLockArgs struct {
+	UUID string `json:"uuid"`
 }
 
 type WalScope struct {

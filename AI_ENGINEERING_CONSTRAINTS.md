@@ -49,6 +49,16 @@ Before initiating any mutation or code change, you **MUST** verify the action ag
 6.  **Numerical Safety**: All transforms and material deltas must pass the `auditPayload` check for NaN/Inf.
 7.  **Git LFS awareness**: Large binary assets (Unity/Blender) are tracked via Git LFS. Do not attempt direct parsing of these files.
 
+## 🛡️ 8. Git Isolation Mandate (Iron Box Save-Game)
+To prevent repository bloat and ensure high-fidelity rollbacks of creative work:
+- **Primary Repo (`.git`)**: Reserved STRICTLY for codebase and tool logic. **NEVER** commit `.mat`, `.fbx`, `.png`, or scene data here.
+- **Safety Repo (`.git_safety`)**: Local-only "Save-Game" repository for project-level snapshots.
+    - **Snapshot Protocol**: Before high-risk operations (Baking, Exporting, Batch Mutating), use:
+      `git --git-dir=.git_safety --work-tree=. add .`
+      `git --git-dir=.git_safety --work-tree=. commit -m "[Snapshot Name]"`
+- **Push Restriction**: `git push` is FORBIDDEN unless explicitly requested for a GitHub codebase release.
+- **Exclusion**: `.git_safety/` must remain untracked by the primary repo.
+
 ---
 
 ## 🏗️ Architectural Constraints

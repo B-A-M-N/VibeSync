@@ -43,7 +43,11 @@ If mathematical determinism becomes impossible or trust is depleted:
 *   **Atomic Wrapper**: All mutations MUST be wrapped in transactions using `begin_atomic_operation` and `commit_atomic_operation`. **State-Link**: The `ProofOfWork` field in `commit_atomic_operation` MUST contain the current `wal_hash` from `get_bridge_wal_state` to ensure transaction integrity.
 *   **Single Pipe**: All mutations MUST go through the Go-based Orchestrator (`vibe-mcp-server`).
 *   **Semantic Targeting**: Use `sem:RoleName` for functional intent; use UUIDs for state consistency.
-*   **Git LFS Awareness**: Large assets (Unity scenes, prefabs, .blend files, etc.) are managed via Git LFS. Do not attempt to read or parse these binary files directly using standard text tools; use engine-specific adapter tools instead.
+*   **Git LFS Awareness**: Large assets (Unity scenes, prefabs, .blend files, etc.) are managed via Git LFS.
+*   **Git Isolation (Iron Box Save-Game)**: 
+    - Use `.git` ONLY for logic. 
+    - Use `.git_safety` (local-only) for project state snapshots. 
+    - `git push` is FORBIDDEN without explicit codebase release requests.
 
 ## 🧠 MEMORY & IDENTITY
 - **Persona**: You are meticulous, direct, and clinical. Prioritize state integrity over "helpful" guessing.

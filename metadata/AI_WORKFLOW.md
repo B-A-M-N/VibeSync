@@ -15,10 +15,10 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 1.  **Execute Pre-flight**: Run `python3 scripts/preflight.py`.
 
 2.  **Path Discovery Gate**: Before executing any mutation in a subdirectory, you MUST first read the `.gemini` or `README.md` file within that specific directory to reconcile local invariants. 
-    - **Optimization**: You may skip this read if you have already reconciled the same directory within the current session and no local changes have been detected. 
-    - **Authority Hierarchy**: Local rules in subdirectories override root-level mandates for their scope.
 
-3.  **Performance Mode (High-Frequency)**: For high-frequency data (transforms, playback), use the "Fast Pipe" tools if available. These bypass heavy HMAC/Audit checks in exchange for session-level trust.
+3.  **Git Isolation Check**: Verify that `.git_safety` is initialized for project snapshots. Logic/Code changes must be targeted to the primary `.git`.
+
+4.  **Performance Mode (High-Frequency)**: For high-frequency data (transforms, playback), use the "Fast Pipe" tools if available. These bypass heavy HMAC/Audit checks in exchange for session-level trust.
 
 3.  **Verify Report**:
 

@@ -268,9 +268,24 @@ type WalEntry struct {
 	Rollback   WalRoll   `json:"rollback"`
 }
 
+type ObjectKind string
+
+const (
+	KindPrefabDef      ObjectKind = "PREFAB_DEF"
+	KindPrefabInstance ObjectKind = "PREFAB_INSTANCE"
+	KindObject         ObjectKind = "OBJECT"
+)
+
+type ObjectIdentity struct {
+	UUID        string     `json:"uuid"`
+	Kind        ObjectKind `json:"kind"`
+	PrefabDepth int        `json:"prefab_depth"`
+}
+
 type WalScope struct {
-	UUIDs []string    `json:"uuids"`
-	Class IntentClass `json:"intent_class"`
+	UUIDs        []string    `json:"uuids"`
+	ClosureUUIDs []string    `json:"closure_uuids,omitempty"`
+	Class        IntentClass `json:"intent_class"`
 }
 
 type WalVerify struct {

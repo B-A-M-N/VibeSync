@@ -96,6 +96,7 @@ AI agents NEVER decide the classification. It is derived mechanically from the o
 | Category | Fast Path (Cosmetic) | Slow Path (Structural) | Guarded Path (Destructive) |
 | :--- | :--- | :--- | :--- |
 | **Criteria** | No object graph change. No UUID creation/removal. No reference alteration. | Alters hierarchy, references, topology, or instancing. | Deletes UUIDs. Overwrites assets. Irreversible without snapshot. |
+| **Validation** | Epsilon Check (`1e-5`). | **DAG Check**: No cycles. **Depth Check**: Prefab nesting parity. | **Closure Check**: All deps included. Snapshot required. |
 | **Examples** | Transforms, Material params, Shader edits, Visibility toggles. | Parenting, Prefab instantiation, Modifier stack changes. | Object deletion, Mesh overwrite, Asset replacement. |
 | **Commit Mode** | AUTO | AUTO | AUTO + SNAPSHOT |
 | **Batch Window** | 250–500ms | 0–100ms | DISABLED |

@@ -42,6 +42,14 @@ Exposes the authoritative history from the Write-Ahead Log.
 Ensures only one transaction is in-flight and that specific assets are locked.
 - **Rule**: Timeout triggers automatic rollback.
 
+### 🌳 `/bridge/graph_invariance` (Hierarchy Safety)
+Ensures the hierarchy graph remains a directed acyclic graph (DAG).
+- **Rule**: Orchestrator must compute ancestor closure before any parenting change. Parent A cannot be a descendant of Child B.
+
+### 📦 `/bridge/closure_invariance` (Identity Integrity)
+Ensures destructive operations do not leave dangling references or identity holes.
+- **Rule**: Deletions MUST include the full dependency closure (children, constraints, modifiers).
+
 ### 📐 `/bridge/delta_state` (Mutation Proof)
 Explains exactly what changed and provides a hash of the delta.
 - **Goal**: Prevents "Ghost Changes" or implicit mutations.

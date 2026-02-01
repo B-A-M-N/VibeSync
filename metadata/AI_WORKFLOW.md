@@ -105,14 +105,13 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 
 ## PHASE 4 — SYNC OPERATIONS (UUID-FIRST)
 
-17. Determine required sync operations:
-    * Object creation, deletion, modification
-    * Scene hierarchy changes
-    * Asset updates (mesh/material/animation)
-18. Resolve all targets by UUID only. (**Edge Case 8: Renames/Moves**)
-19. Wrap each operation in transaction: (**Edge Case 10**)
+17. **Path Selection**: Categorize mutation as **Fast Path** (Cosmetic/Transform) or **Slow Path** (Structural).
+18. **Graph Validation**: For parenting changes, compute **Ancestor Closure**. Ensure the new parent is not a descendant of the target.
+19. **Closure Computation**: For destructive operations (Deletes), compute the **Delete Closure** (children, refs, constraints). Intent MUST target the full closure.
+20. Resolve all objects **by UUID and Prefab Depth**.
+21. Wrap each operation in a transaction:
     ```
-    BEGIN → mutate → validate → COMMIT / ROLLBACK
+    BEGIN → mutate → PROVISIONAL COMMIT (Fast Path) / BLOCK (Slow Path) → validate → COMMIT / ROLLBACK
     ```
 20. Respect editor restrictions:
     * Unity: snapshot editor state pre-Play Mode; restore post-Play. (**Edge Case 5: Play Mode**)

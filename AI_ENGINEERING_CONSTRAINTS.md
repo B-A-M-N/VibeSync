@@ -113,6 +113,8 @@ To eliminate user-visible stalls during sync:
 15. **Circuit Breaker**: The heartbeat goroutine is the final authority on engine liveness (5s interval).
 16. **Forensic Primacy**: Logs are sources of truth, not afterthoughts. AI context must be periodically refreshed with log deltas.
 17. **Infrastructure snapshots**: Automated snapshots via `snap_commit.py` are mandatory before high-risk operations.
+18. **Multi-Step Planning**: For tasks requiring >3 operations, the AI MUST use `propose_strategic_plan` to obtain human approval.
+19. **Forensic Black Box**: All terminal failures MUST be followed by a `generate_forensic_snapshot` call to preserve the state of the "Reasoning Engine" at the moment of crash.
 
 ---
 

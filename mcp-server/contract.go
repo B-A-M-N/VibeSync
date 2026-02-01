@@ -393,6 +393,41 @@ type WorkResult struct {
 	Payload      interface{} `json:"payload,omitempty"`
 }
 
+type VibeSitrep struct {
+	Timestamp     time.Time              `json:"timestamp"`
+	Pulse         string                 `json:"pulse"`
+	EngineStatus  map[string]string      `json:"engine_status"`
+	AffordanceMap map[string][]string    `json:"affordance_map"` // UUID -> list of valid Opcodes/Actions
+	GlobalPerimeter bool                 `json:"global_perimeter_locked"`
+}
+
+type StrategicPlan struct {
+	ID          string       `json:"id"`
+	Title       string       `json:"title"`
+	Steps       []PlanStep   `json:"steps"`
+	Rationale   string       `json:"rationale"`
+	TotalBudget int          `json:"total_budget_ms"`
+}
+
+type PlanStep struct {
+	ID          int        `json:"id"`
+	Description string     `json:"description"`
+	Intent      IntentType `json:"intent"`
+	Opcode      VibeOpcode `json:"opcode"`
+	UUID        string     `json:"uuid"`
+}
+
+type MutationIntegrityArgs struct {
+	UUID     string     `json:"uuid"`
+	Opcode   VibeOpcode `json:"opcode"`
+	Expected map[string]interface{} `json:"expected_state"`
+}
+
+type ForensicSnapshotArgs struct {
+	Reason string `json:"reason"`
+	Tid    string `json:"transaction_id,omitempty"`
+}
+
 type EntropyBudget struct {
 	Limit int `json:"limit"`
 	Used  int `json:"used"`

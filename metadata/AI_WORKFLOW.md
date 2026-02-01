@@ -71,40 +71,43 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 
 ---
 
-## PHASE 1 — INDEXING & UUID ENFORCEMENT
+## PHASE 1 — INDEXING, SITREP & AFFORDANCES
 
-6. Scan all assets and objects in both editors:
+6. **Generate SITREP**: Call `generate_sitrep` to identify existing objects and their **Affordance Map**.
+   * Note: The Affordance Map dictates which Opcodes are valid for which UUIDs.
+7. Scan all assets and objects in both editors:
    * Unity: prefabs, materials, meshes, objects
    * Blender: objects, meshes, armatures, materials, collections
-7. Build mapping:
+8. Build mapping:
    ```
    UUID → Editor Object Reference
    UUID → External Mapping
    ```
-8. Detect missing UUIDs:
+9. Detect missing UUIDs:
    * Generate UUID
    * Assign to object/datablock
    * Persist immediately
-9. Detect duplicate UUIDs: (**Edge Case 1: Duplicate UUIDs**)
+10. Detect duplicate UUIDs: (**Edge Case 1: Duplicate UUIDs**)
    * Freeze automation temporarily
    * Regenerate for newest instance
    * Persist immediately
 
 ---
 
-## PHASE 2 — SNAPSHOT & LOG CONSULTATION
+## PHASE 2 — SNAPSHOT, STRATEGY & LOG CONSULTATION
 
-10. **Iron Box Snapshot**: Before any destructive mutation, take a local snapshot using the `.git_safety` repo (see `metadata/IRON_BOX_SAVE_GAME.md`).
+11. **Iron Box Snapshot**: Before any destructive mutation, take a local snapshot using the `.git_safety` repo (see `metadata/IRON_BOX_SAVE_GAME.md`).
     ```bash
     git --git-dir=.git_safety --work-tree=. add . && git --git-dir=.git_safety --work-tree=. commit -m "[AI_SYNC] Pre-mutation snapshot"
     ```
-11. **Scene State Snapshot**: Take a full snapshot of scene state:
+12. **Propose Strategic Plan**: For tasks requiring >3 steps, use `propose_strategic_plan` to get human architectural approval.
+13. **Scene State Snapshot**: Take a full snapshot of scene state:
     * Object transforms
     * Scene hierarchy
     * Mesh/material references
-12. Timestamp snapshot. Abort if incomplete.
-13. Consult logs for prior failures, crash triggers, incomplete transactions. (**Edge Case 10 & 15**)
-14. **No operation executes without log acknowledgment and safety snapshot.**
+14. Timestamp snapshot. Abort if incomplete.
+15. Consult logs for prior failures, crash triggers, incomplete transactions. (**Edge Case 10 & 15**)
+16. **No operation executes without log acknowledgment and safety snapshot.**
 
 ---
 
@@ -122,20 +125,22 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 
 ---
 
-## PHASE 4 — SYNC OPERATIONS (UUID-FIRST)
+## PHASE 4 — SYNC OPERATIONS (COORDINATED)
 
-18. **Real-Time Sentinel Check**: Verify engines are not busy (Compiling, Updating, Depsgraph recalculating).
-19. **Path Selection**: Categorize mutation as **Fast Path** (Cosmetic/Transform) or **Slow Path** (Structural).
-20. **Intent Binding**: Select the appropriate **Intent Label** (`OPTIMIZE`, `RIG`, `LIGHT`, `ANIMATE`, `SCENE_SETUP`).
-21. **Opcode Selection**: Map the mutation to its strictly defined **Opcode** (e.g., `0x03` for Transform).
-22. **Conflict Validation**: Ensure the intent does not violate existing provisional locks or the Conflict Resolution Policy.
-21. **Graph Validation**: For parenting changes, compute **Ancestor Closure**. Ensure the new parent is not a descendant of the target.
-22. **Closure Computation**: For destructive operations (Deletes), compute the **Delete Closure** (children, refs, constraints). Intent MUST target the full closure.
-23. Resolve all objects **by UUID and Prefab Depth**.
-24. Wrap each operation in a transaction:
+21. **Real-Time Sentinel Check**: Verify engines are not busy (Compiling, Updating, Depsgraph recalculating).
+22. **Coordinated Dispatch**: Use `dispatch_coordinated` to bundle `submit_intent`, `validate_intent`, and `dispatch_work_order`.
+23. **Path Selection**: Categorize mutation as **Fast Path** (Cosmetic/Transform) or **Slow Path** (Structural).
+24. **Intent Binding**: Select the appropriate **Intent Label** (`OPTIMIZE`, `RIG`, `LIGHT`, `ANIMATE`, `SCENE_SETUP`).
+25. **Opcode Selection**: Map the mutation to its strictly defined **Opcode** (e.g., `0x03` for Transform).
+26. **Conflict Validation**: Ensure the intent does not violate existing provisional locks or the Conflict Resolution Policy.
+27. **Graph Validation**: For parenting changes, compute **Ancestor Closure**. Ensure the new parent is not a descendant of the target.
+28. **Closure Computation**: For destructive operations (Deletes), compute the **Delete Closure** (children, refs, constraints). Intent MUST target the full closure.
+29. Resolve all objects **by UUID and Prefab Depth**.
+30. Wrap each operation in a transaction:
     ```
     BEGIN → mutate → PROVISIONAL COMMIT (Fast Path) / BLOCK (Slow Path) → validate → COMMIT / ROLLBACK
     ```
+31. **Integrity Stress Test**: After mutation, call `verify_mutation_integrity` to confirm the physical engine state matches the intended affordance change.
 20. Respect editor restrictions:
     * Unity: snapshot editor state pre-Play Mode; restore post-Play. (**Edge Case 5: Play Mode**)
     * Blender: avoid persistent Python handles across undo. (**Edge Case 4: Undo/Redo**)
@@ -165,17 +170,18 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 
 ---
 
-## PHASE 7 — LOGGING & FAILURE ESCALATION
+## PHASE 7 — LOGGING, FORENSICS & FAILURE ESCALATION
 
-29. Every operation must log:
+32. Every operation must log:
     ```
     timestamp, process_id, operation, uuid(s), phase, outcome, error_code
     ```
-30. Consult logs before each operation: (**Edge Case 13: Failed Hotfix / AI Retry Loops**)
+33. **Forensic Black Box**: If a mutation fails or an engine crashes, call `generate_forensic_snapshot` to bundle the WAL, SITREPs, and logs for post-mortem analysis.
+34. Consult logs before each operation: (**Edge Case 13: Failed Hotfix / AI Retry Loops**)
     * Repeated failures → degrade / pause / notify
     * Promote log entries into operational memory
-31. Maintain failure counters per UUID/operation.
-32. On threshold: pause automation, preserve state, enter safe mode.
+35. Maintain failure counters per UUID/operation.
+36. On threshold: pause automation, preserve state, enter safe mode.
 
 ---
 

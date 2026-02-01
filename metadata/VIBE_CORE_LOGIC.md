@@ -17,6 +17,11 @@ This document defines the essential invariants of the VibeSync cluster. These ru
 - **Heartbeat Requirement**: Engines must respond to a health check every 5 seconds.
 - **Auto-Panic**: Any heartbeat failure or unhandled exception triggers an immediate hierarchy lock in both engines.
 
+## 🔍 4. The Law of Forensic Necessity
+- **Mandatory Consultation**: If an error trigger (defined in `metadata/LOG_TROUBLESHOOTING_MAPPING.md`) occurs, the bridge MUST consult the associated logs before attempting recovery.
+- **Hash-Gated Analysis**: Logs are only re-processed if their state hash has changed, ensuring deterministic troubleshooting context.
+- **Context Primacy**: Forensic evidence from logs overrides "Success" status messages from adapters.
+
 ---
 
 ## 🛰️ Engine State Machine

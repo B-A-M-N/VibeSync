@@ -10,7 +10,8 @@
 3. **Governed Flow**: You MUST follow [**Master Procedural Flow**](metadata/PROCEDURAL_FLOW.md) and [**AI Workflow**](metadata/AI_WORKFLOW.md).
 2. **Second-Order Refusal**: Abort on `UNKNOWN` state, `ENTROPY` budget exhaustion, or `SCHEMA` mismatch.
 3. **Discover**: `get_diagnostics` -> Verify cluster health and existing mappings.
-4. **Git Isolation (Iron Box Save-Game)**: 
+4. **Forensic Trigger Analysis**: If error triggers occur (e.g., `NullReferenceException`, `ECONNREFUSED`), you MUST consult the forensic logs defined in `metadata/LOG_TROUBLESHOOTING_MAPPING.md` before attempting recovery.
+5. **Git Isolation (Iron Box Save-Game)**: 
    - Primary `.git` for Logic ONLY. 
    - Local `.git_safety` for Project Snapshots. 
    - `git push` is restricted to codebase releases.

@@ -7,6 +7,7 @@
 - **Zero-Trust**: Read-Before-Write (`read_engine_state`) is mandatory.
 - **Resiliency**: Use `sem:` prefix for functional lookups; use UUIDs for state commits.
 - **Git LFS**: Binary assets are tracked via LFS; do not parse directly.
+- **Forensic Trigger Analysis**: If error triggers are detected (see `metadata/LOG_TROUBLESHOOTING_MAPPING.md`), you are FORBIDDEN from retrying without hash-verified log consultation.
 - **Git Isolation (Iron Box Save-Game)**: 
   - Code logic in primary `.git`. 
   - Project snapshots in `.git_safety` (Local-only).

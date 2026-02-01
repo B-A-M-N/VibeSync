@@ -4,6 +4,18 @@
 
 ---
 
+## PHASE -2 — FORENSIC TRIGGER ANALYSIS (TRIGGERED)
+
+If a tool output or engine response contains an error pattern (e.g., `NullReferenceException`, `ECONNREFUSED`):
+
+1.  **Consult Mapping**: Resolve the trigger to its required log files using `metadata/LOG_TROUBLESHOOTING_MAPPING.md`.
+2.  **Verify Hash**: Check if the target log has changed since the last read. If unchanged, skip to step 4.
+3.  **Targeted Log Read**: Read the relevant sections of the forensic logs.
+4.  **Inject Forensic Report**: Create a structured summary of the error context and add it to the active context.
+5.  **Refusal/Recovery**: If the log indicates a terminal state (e.g., Kernel Deadlock), use `epistemic_refusal` or `trigger_panic`. DO NOT guess a fix.
+
+---
+
 ## PHASE -1 — ADVERSARIAL PRE-FLIGHT (MANDATORY)
 
 

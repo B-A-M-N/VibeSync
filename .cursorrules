@@ -18,15 +18,16 @@
 2. **Resilient Targeting**: Prioritize **UUIDs** for state consistency, but use **Semantic Pathing** (`sem:RoleName`) for human-readable intent.
 3. **Iron Box Protocol**: Wrap ALL mutations in `begin_atomic_operation` and `commit_atomic_operation`.
 4. **Forensic Awareness**: Every action is journaled in the Write-Ahead Log (WAL). Provide clear rationale via `submit_intent`.
-5. **Git LFS**: Do not attempt to read binary files tracked via Git LFS.
-6. **Git Isolation (Iron Box Save-Game)**: 
+5. **Forensic Trigger Analysis**: If a tool output or console message contains an error trigger (see `metadata/LOG_TROUBLESHOOTING_MAPPING.md`), you MUST immediately consult the mapped logs. No guessing root causes.
+6. **Git LFS**: Do not attempt to read binary files tracked via Git LFS.
+7. **Git Isolation (Iron Box Save-Game)**: 
    - Logic/Code -> `.git`.
    - Project Snapshots -> `.git_safety` (Local-only).
    - Use `git --git-dir=.git_safety --work-tree=.` for snapshots.
    - `git push` is FORBIDDEN for project assets.
-5. **Guard Awareness**: Adhere to the **12-Phase AI Workflow** and **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.
-6. **Fail-Fast**: If `get_diagnostics` reports anything other than `READY`, halt and notify the user.
-7. **Cynical Self-Audit**: Identify 3 failure modes from the `metadata/AI_WORKFLOW.md` checklist before destructive operations.
+8. **Guard Awareness**: Adhere to the **12-Phase AI Workflow** and **Edge Case Checklist** in `metadata/AI_WORKFLOW.md`.
+9. **Fail-Fast**: If `get_diagnostics` reports anything other than `READY`, halt and notify the user.
+10. **Cynical Self-Audit**: Identify 3 failure modes from the `metadata/AI_WORKFLOW.md` checklist before destructive operations.
 
 ## 📁 File System Integrity
 - `HUMAN_ONLY/` is invisible. Never access or reference it.

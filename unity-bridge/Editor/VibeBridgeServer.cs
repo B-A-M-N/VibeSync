@@ -116,6 +116,25 @@ public static class VibeBridgeServer
         var request = context.Request;
         var response = context.Response;
 
+        // --- Real-Time State Sentinels (Race Condition Prevention) ---
+        if (EditorApplication.isCompiling)
+        {
+            SendResponse(response, "{\"error\": \"Engine Busy: Compiling\"}", HttpStatusCode.ServiceUnavailable);
+            return;
+        }
+
+        if (EditorApplication.isUpdating)
+        {
+            SendResponse(response, "{\"error\": \"Engine Busy: Updating Assets\"}", HttpStatusCode.ServiceUnavailable);
+            return;
+        }
+
+        if (AssetDatabase.IsV2Enabled() && AssetDatabase.IsUpdating())
+        {
+            SendResponse(response, "{\"error\": \"Engine Busy: AssetDatabase Refreshing\"}", HttpStatusCode.ServiceUnavailable);
+            return;
+        }
+
         // 1. Path Whitelist Check
         if (!_pathWhitelist.Contains(request.Url.AbsolutePath))
         {

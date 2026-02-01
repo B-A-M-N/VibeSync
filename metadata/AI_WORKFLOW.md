@@ -4,6 +4,16 @@
 
 ---
 
+## PHASE -3 — STATIC PRE-FLIGHT (NEW CODE ONLY)
+
+If the AI has generated new code or scripts for an engine:
+
+1.  **Blender**: Run `pyright` against the script using `fake-bpy-module` stubs. Fix all errors.
+2.  **Unity**: Audit syntax via Roslyn-style checks and verify against `metadata/unity_api_map.json`.
+3.  **Dual-Validator**: Execute `python3 scripts/validators/dual_validator.py` to confirm environmental stability.
+
+---
+
 ## PHASE -2 — FORENSIC TRIGGER ANALYSIS (TRIGGERED)
 
 If a tool output or engine response contains an error pattern (e.g., `NullReferenceException`, `ECONNREFUSED`):
@@ -109,12 +119,13 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 
 ## PHASE 4 — SYNC OPERATIONS (UUID-FIRST)
 
-18. **Path Selection**: Categorize mutation as **Fast Path** (Cosmetic/Transform) or **Slow Path** (Structural).
-19. **Conflict Validation**: Ensure the intent does not violate existing provisional locks or the Conflict Resolution Policy.
-20. **Graph Validation**: For parenting changes, compute **Ancestor Closure**. Ensure the new parent is not a descendant of the target.
-21. **Closure Computation**: For destructive operations (Deletes), compute the **Delete Closure** (children, refs, constraints). Intent MUST target the full closure.
-22. Resolve all objects **by UUID and Prefab Depth**.
-23. Wrap each operation in a transaction:
+18. **Real-Time Sentinel Check**: Verify engines are not busy (Compiling, Updating, Depsgraph recalculating).
+19. **Path Selection**: Categorize mutation as **Fast Path** (Cosmetic/Transform) or **Slow Path** (Structural).
+20. **Conflict Validation**: Ensure the intent does not violate existing provisional locks or the Conflict Resolution Policy.
+21. **Graph Validation**: For parenting changes, compute **Ancestor Closure**. Ensure the new parent is not a descendant of the target.
+22. **Closure Computation**: For destructive operations (Deletes), compute the **Delete Closure** (children, refs, constraints). Intent MUST target the full closure.
+23. Resolve all objects **by UUID and Prefab Depth**.
+24. Wrap each operation in a transaction:
     ```
     BEGIN → mutate → PROVISIONAL COMMIT (Fast Path) / BLOCK (Slow Path) → validate → COMMIT / ROLLBACK
     ```

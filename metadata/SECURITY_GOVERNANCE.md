@@ -25,27 +25,21 @@ A specialized pre-boot auditor (`scripts/preflight.py`) detects and resolves env
 - **Docker Isolation**: Minimal Alpine-based containerization for the Go Orchestrator ensures environment isolation.
 - **OS Hardening**: Standard security tools like `ufw` (firewall) and `AppArmor` are used to restrict the bridge's system access.
 
----
+### 🛡️ 7. Enterprise Stability & Hallucination Prevention
+To achieve commercial-grade reliability, VibeSync employs:
+- **Static Pre-Flight**: Every AI-generated script is audited via **Pyright** (Blender) and **Roslyn** (Unity) before execution.
+- **API Intelligence**: `fake-bpy-module` and `ApiMetadataMapper` provide exact tool signatures to the AI, eliminating "hallucinated" attributes.
+- **Automated Integrity Testing**: Headless tests run via `pytest-blender` and Unity UTF verify mutations inside the actual application processes.
 
-## 🔒 6. Triple-Lock Invariance System (Absolute Governance)
+### 🛡️ 8. Real-Time State Sentinels
+- **Unity Compilation Sentinel**: Mutate-before-verify loops are blocked if `EditorApplication.isCompiling` is true.
+- **Blender Depsgraph Sentinel**: Mutations wait for `evaluated_depsgraph_get()` to stabilize.
+- **Global Traffic Controller**: The Go Orchestrator locks the "Creation Perimeter" on both apps during sync to prevent race conditions.
 
-To achieve absolute invariance and prevent "Optimistic Bypass," VibeSync implements three nested safety locks as defined in the **[Absolute Invariance Contract](INVARIANCE_CONTRACT.md)**:
-
-### 1. Mechanical Invariance (The Ground Truth Lock)
-The `execute_governed_mutation` tool doesn't just send a command; it automatically waits for the engine response and performs an independent state read-back before returning success to the AI.
-
-### 2. Contextual Invariance (The Forensic Feed)
-Every tool response is "Force-Fed" with a **Forensic Report**, including the last 3 lines of the WAL, engine health flags, and generation counters. This ensures errors are always in the AI's immediate context.
-
-### 3. Semantic Invariance (The Proof of Work)
-The `commit_atomic_operation` tool is "Hard Gated." It will mechanically refuse to execute unless the AI provides a valid `ProofOfWork` string summarizing the evidence found in the Forensic Report.
-
----
-
-## 🔗 Security Resources
-- [**Security Gate Script**](../security_gate.py): The pre-execution auditor.
-- [**Iron Box Constraints**](../AI_ENGINEERING_CONSTRAINTS.md): The formal rules governing all codebase changes.
-- [**Threat Model**](THREAT_MODEL.md): Detailed analysis of potential attack vectors.
+### 🛡️ 9. Infrastructure Hardening
+- **Auto-Snapshot System**: `snap_commit.py` creates a safety restore point in `.git_safety` before every high-risk mutation.
+- **Log Rotation**: Automated truncation of forensic logs keeps AI context within stable token limits.
+- **License Compliance**: Continuous auditing ensures all dependencies (MIT/Apache 2.0) are ready for commercial redistribution.
 
 ---
 *Copyright (C) 2026 B-A-M-N*

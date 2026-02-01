@@ -1,0 +1,23 @@
+repos:
+- repo: local
+  hooks:
+    - id: snap-commit
+      name: Iron Box Snapshot
+      entry: python3 scripts/hardening/snap_commit.py Pre-Commit Auto-Snapshot
+      language: system
+      stages: [commit]
+    - id: pyright
+      name: Pyright Static Analysis
+      entry: pyright
+      language: system
+      types: [python]
+    - id: upm-sentinel
+      name: UPM Sentinel
+      entry: python3 scripts/sentinels/upm_sentinel.py
+      language: system
+      always_run: true
+    - id: dual-validator
+      name: Dual-Validator
+      entry: python3 scripts/validators/dual_validator.py
+      language: system
+      stages: [push]

@@ -304,6 +304,7 @@ type LockType string
 const (
 	LockHumanActive LockType = "HUMAN_ACTIVE"
 	LockAISpeculative LockType = "AI_SPECULATIVE"
+	LockPerimeter LockType = "PERIMETER_LOCK"
 )
 
 type VibeLock struct {

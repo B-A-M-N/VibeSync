@@ -842,6 +842,25 @@ func release_lock(ctx context.Context, req *mcp.CallToolRequest, args ReleaseLoc
 	return wrapForensicResult("RELEASED"), nil, nil
 }
 
+func perimeter_lock(ctx context.Context, req *mcp.CallToolRequest, args struct{Locked bool `json:"locked"`}) (*mcp.CallToolResult, any, error) {
+	lockMu.Lock()
+	defer lockMu.Unlock()
+	if args.Locked {
+		lockTable["GLOBAL_PERIMETER"] = &VibeLock{
+			UUID: "GLOBAL_PERIMETER",
+			Type: LockPerimeter,
+			Actor: ActorSystem,
+			Timestamp: time.Now(),
+			ExpiresAt: time.Now().Add(60 * time.Second),
+		}
+		updateBridgeActivity("KERNEL: PERIMETER_LOCKED")
+	} else {
+		delete(lockTable, "GLOBAL_PERIMETER")
+		updateBridgeActivity("KERNEL: READY")
+	}
+	return wrapForensicResult("OK"), nil, nil
+}
+
 func get_bridge_heartbeat(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
 	stateMu.RLock(); defer stateMu.RUnlock()
 	res := BridgeHeartbeat{
@@ -998,6 +1017,8 @@ func main() {
 	mcp.AddTool(server, &mcp.Tool{Name: "lock_object", Description: "Locking"}, lock_object)
 
 	mcp.AddTool(server, &mcp.Tool{Name: "apply_lock", Description: "Human Lock"}, apply_lock)
+
+	mcp.AddTool(server, &mcp.Tool{Name: "perimeter_lock", Description: "Creation Perimeter Lock"}, perimeter_lock)
 
 	mcp.AddTool(server, &mcp.Tool{Name: "release_lock", Description: "Release Lock"}, release_lock)
 

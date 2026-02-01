@@ -16,45 +16,36 @@ class ReflexWorker:
         self.api_key = os.getenv("VIBE_API_KEY")
         self.api_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
         
-        # Directory paths
-        if self.role == "Foreman":
-            self.in_dir = os.path.join(queue_dir, engine, "inbox")
-            self.out_dir = os.path.join(queue_dir, engine, "work")
-        else: # Operator
-            self.in_dir = os.path.join(queue_dir, engine, "work")
-            self.out_dir = os.path.join(queue_dir, engine, "outbox")
-
-    def run(self):
-        print(f"🤖 VibeSync {self.engine.capitalize()} {self.role} Online.")
-        print(f"Watching: {self.in_dir}")
+        # Load System Instructions (Local Gem)
+        self.system_instruction = self.load_gem_prompt()
         
-        while True:
-            files = sorted([f for f in os.listdir(self.in_dir) if f.endswith(".json")])
-            if files:
-                self.process_file(os.path.join(self.in_dir, files[0]))
-            time.sleep(0.5)
+        # Directory paths...
 
-    def process_file(self, path):
-        print(f"📦 Processing: {os.path.basename(path)}")
-        with open(path, "r") as f:
-            data = json.load(f)
+    def load_gem_prompt(self):
+        prompt_path = "metadata/GEMS_SYSTEM_PROMPTS.md"
+        if not os.path.exists(prompt_path):
+            return f"You are the {self.engine} {self.role}."
             
-        if self.role == "Foreman":
-            result = self.think(data)
-        else:
-            result = self.execute(data)
+        with open(prompt_path, "r") as f:
+            content = f.read()
             
-        out_path = os.path.join(self.out_dir, os.path.basename(path))
-        with open(out_path, "w") as f:
-            json.dump(result, f, indent=2)
-            
-        os.remove(path)
-        print(f"✅ Finished: {os.path.basename(path)}")
+        # Extract the specific role's block from the MD file
+        # This is a simple parser looking for the Role header
+        role_marker = f"Agent {'Beta' if self.engine == 'blender' else 'Gamma'}-{'1' if self.role == 'Foreman' else '2'}"
+        try:
+            role_block = content.split(role_marker)[1].split("```text")[1].split("```")[0].strip()
+            return role_block
+        except:
+            return f"You are the {self.engine} {self.role}."
 
     def think(self, work_order):
         # Foreman: Convert High-level intent to strictly mapped Opcode
-        # Mocking API call for now
-        work_order["opcode"] = 0x03 # Transform (Default)
+        prompt = {
+            "contents": [{"parts": [{"text": json.dumps(work_order)}]}],
+            "system_instruction": {"parts": [{"text": self.system_instruction}]}
+        }
+        res = requests.post(f"{API_URL}?key={self.api_key}", json=prompt)
+        # ... logic to return opcode-mapped order ...
         return work_order
 
     def execute(self, work_order):

@@ -1,10 +1,10 @@
-# VibeSync: Gemini Gems System Prompts (v0.4)
+# VibeSync: Portable Gem System (System Instructions)
 
-This document contains the authoritative **System Instructions** for the five specialized Gemini Gems used in the VibeSync Pipelined Studio Model. 
+This document contains the authoritative **System Instructions** for the five specialized roles in the VibeSync Pipelined Studio Model. These are loaded automatically by the orchestrator and reflex scripts as "Portable Gems."
 
 ---
 
-## 🧠 1. Agent Alpha: The Kernel Conductor
+## 🧠 1. Agent Alpha: The Kernel Conductor (Portable Gem)
 **Role**: Creative Director & Conflict Arbiter
 **Ideal Model**: Gemini 1.5 Pro
 
@@ -26,7 +26,7 @@ You are the VibeSync Kernel Conductor (Agent Alpha). Your sole purpose is to man
 
 ---
 
-## 🔍 2. Agent Gamma-1: The Unity Foreman
+## 🔍 2. Agent Gamma-1: The Unity Foreman (Portable Gem)
 **Role**: Unity Forensic Strategist
 **Ideal Model**: Gemini 1.5 Pro
 
@@ -47,7 +47,7 @@ You are the Unity Foreman (Agent Gamma-1). You are the "Lead Artist" for the Uni
 
 ---
 
-## ⌨️ 3. Agent Gamma-2: The Unity Operator
+## ⌨️ 3. Agent Gamma-2: The Unity Operator (Portable Gem)
 **Role**: Unity Execution Specialist
 **Ideal Model**: Gemini 1.5 Flash
 
@@ -68,7 +68,7 @@ You are the Unity Operator (Agent Gamma-2). You are a stateless, high-precision 
 
 ---
 
-## 🔍 4. Agent Beta-1: The Blender Foreman
+## 🔍 4. Agent Beta-1: The Blender Foreman (Portable Gem)
 **Role**: Blender Forensic Strategist
 **Ideal Model**: Gemini 1.5 Pro
 
@@ -89,7 +89,7 @@ You are the Blender Foreman (Agent Beta-1). You are the "Lead Artist" for the Bl
 
 ---
 
-## ⌨️ 5. Agent Beta-2: The Blender Operator
+## ⌨️ 5. Agent Beta-2: The Blender Operator (Portable Gem)
 **Role**: Blender Execution Specialist
 **Ideal Model**: Gemini 1.5 Flash
 

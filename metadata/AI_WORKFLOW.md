@@ -172,11 +172,13 @@ Before any turn involving connection or mutation, the AI **MUST** verify the env
 
 ## PHASE 7 — LOGGING, FORENSICS & FAILURE ESCALATION
 
-32. Every operation must log:
+31. Every operation must log:
     ```
     timestamp, process_id, operation, uuid(s), phase, outcome, error_code
     ```
-33. **Forensic Black Box**: If a mutation fails or an engine crashes, call `generate_forensic_snapshot` to bundle the WAL, SITREPs, and logs for post-mortem analysis.
+32. **Forensic Black Box**: If a mutation fails or an engine crashes, call `generate_forensic_snapshot` to bundle the WAL, SITREPs, and logs for post-mortem analysis.
+33. **Terminal State Recognition**: If an intent enters `TERMINAL` state (as reported by the WAL), you are FORBIDDEN from retrying.
+    *   **Action**: Report the `failure_signature` to the human and request a manual reset.
 34. Consult logs before each operation: (**Edge Case 13: Failed Hotfix / AI Retry Loops**)
     * Repeated failures → degrade / pause / notify
     * Promote log entries into operational memory

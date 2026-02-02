@@ -36,6 +36,11 @@ This document defines the essential invariants of the VibeSync cluster. These ru
 - **Strict Mapping**: All engine commands MUST be issued via strictly mapped Opcodes (0x01-0x11).
 - **Intent Binding**: Commands that deviate from the declared intent (e.g., `RIG` performing a `LIGHT` operation) are mechanically rejected.
 
+## 🛑 8. The Law of Failing Closed (Anti-Thrashing)
+- **Terminal States**: If a specific failure signature (Hash of Engine+Opcode+Error) appears twice, the intent enters a **TERMINAL** state.
+- **Authority Lock**: Terminal states cannot be bypassed by any AI model. They require an **External Reset** from a human operator.
+- **Failure over Cleverness**: The system must fail closed and stop, rather than attempting "clever" but unverified workarounds.
+
 ---
 
 ## 🛰️ Engine State Machine

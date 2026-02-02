@@ -94,6 +94,10 @@ var (
 	lastLogIngestedHash string
 	logIngestMu         sync.Mutex
 
+	// Anti-Thrashing Table (Failure Signatures)
+	failureRegistry = make(map[string]int) // Hash -> Count
+	registryMu      sync.Mutex
+
 	// Unit Normalization
 	unitSettings = make(map[string]VibeUnitSettings)
 	unitMu       sync.RWMutex
@@ -929,6 +933,13 @@ func startQueueWatchers() {
 	}
 }
 
+func computeFailureSignature(sig FailureSignature) string {
+	data, _ := json.Marshal(sig)
+	h := sha256.New()
+	h.Write(data)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
 func processWorkResult(engine, path string) {
 	data, err := os.ReadFile(path)
 	if err != nil { return }
@@ -937,13 +948,41 @@ func processWorkResult(engine, path string) {
 	
 	log.Printf("✅ Received Work Result from %s: %s (Status: %s)", engine, res.WorkOrderID, res.Status)
 	
-	// Finalize WAL or update provisional state
+	phase := PhaseFinal
+	sigHash := ""
+	
+	if res.Status == "FAILURE" {
+		phase = PhaseFailed
+		// Loop B (Foreman) Logic: Anti-Thrashing
+		sig := FailureSignature{
+			Engine: engine,
+			ErrorCode: res.Error,
+			Target: res.WorkOrderID, // Target UUID would be in context
+		}
+		sigHash = computeFailureSignature(sig)
+		
+		registryMu.Lock()
+		failureRegistry[sigHash]++
+		count := failureRegistry[sigHash]
+		registryMu.Unlock()
+		
+		if count >= 2 {
+			phase = PhaseTerminal
+			log.Printf("🚨 Anti-Thrashing: Failure signature detected twice. Transitioning to TERMINAL.")
+		} else {
+			phase = PhaseHalted
+		}
+	}
+
+	// Finalize WAL or update state machine
 	journalOperation(map[string]interface{}{
 		"type": "work_result",
 		"engine": engine,
 		"order_id": res.WorkOrderID,
 		"status": res.Status,
+		"phase": phase,
 		"hash": res.Hash,
+		"failure_signature": sigHash,
 	})
 	
 	os.Remove(path)
@@ -1121,6 +1160,14 @@ func ingest_forensic_logs(ctx context.Context, req *mcp.CallToolRequest, args st
 	logIngestMu.Unlock()
 	log.Printf("📜 Log-Driven Governance: AI has ingested history at hash %s", args.LogHash)
 	return wrapForensicResult("INGESTED"), nil, nil
+}
+
+func reset_terminal_state(ctx context.Context, req *mcp.CallToolRequest, args struct{Signature string `json:"failure_signature"`}) (*mcp.CallToolResult, any, error) {
+	registryMu.Lock()
+	defer registryMu.Unlock()
+	delete(failureRegistry, args.Signature)
+	log.Printf("🛡️ External Reset: Terminal state cleared for signature %s", args.Signature)
+	return wrapForensicResult("RESET_SUCCESS"), nil, nil
 }
 
 func get_bridge_heartbeat(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
@@ -1340,9 +1387,11 @@ func main() {
 	mcp.AddTool(server, &mcp.Tool{Name: "generate_sitrep", Description: "Reality: Affordance Map"}, generate_sitrep)
 	mcp.AddTool(server, &mcp.Tool{Name: "verify_mutation_integrity", Description: "Reality: Integrity Stress Test"}, verify_mutation_integrity)
 	mcp.AddTool(server, &mcp.Tool{Name: "propose_strategic_plan", Description: "Reality: Multi-Step Architect"}, propose_strategic_plan)
-	mcp.AddTool(server, &mcp.Tool{Name: "generate_forensic_snapshot", Description: "Reality: Forensic Black Box"}, generate_forensic_snapshot)
-
-	// Start Background Services (Flow Amplifiers)
+		mcp.AddTool(server, &mcp.Tool{Name: "generate_forensic_snapshot", Description: "Reality: Forensic Black Box"}, generate_forensic_snapshot)
+	
+		mcp.AddTool(server, &mcp.Tool{Name: "reset_terminal_state", Description: "Authority: Clear Terminal Lock"}, reset_terminal_state)
+	
+		// Start Background Services (Flow Amplifiers)
 
 	go startControlPlane()
 

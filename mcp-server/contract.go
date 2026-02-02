@@ -289,6 +289,11 @@ const (
 type WalPhase string
 
 const (
+	PhasePending     WalPhase = "PENDING"
+	PhaseAttempted   WalPhase = "ATTEMPTED"
+	PhaseFailed      WalPhase = "FAILED"
+	PhaseHalted      WalPhase = "HALTED"
+	PhaseTerminal    WalPhase = "TERMINAL"
 	PhaseProvisional WalPhase = "PROVISIONAL"
 	PhaseFinal       WalPhase = "FINAL"
 	PhaseRolledBack  WalPhase = "ROLLED_BACK"
@@ -297,17 +302,27 @@ const (
 )
 
 type WalEntry struct {
-	IntentID   uint64          `json:"intent_id"`
-	ParentHash string          `json:"parent_hash"`
-	EntryHash  string          `json:"entry_hash"`
-	Timestamp  int64           `json:"timestamp"`
-	Engine     string          `json:"engine"`
-	Actor      string          `json:"actor"`
-	Scope      WalScope        `json:"scope"`
-	Phase      WalPhase        `json:"phase"`
-	Verify     WalVerify       `json:"verification"`
-	Rollback   WalRoll         `json:"rollback"`
+	IntentID   uint64           `json:"intent_id"`
+	ParentHash string           `json:"parent_hash"`
+	EntryHash  string           `json:"entry_hash"`
+	Timestamp  int64            `json:"timestamp"`
+	Engine     string           `json:"engine"`
+	Actor      string           `json:"actor"`
+	Scope      WalScope         `json:"scope"`
+	Phase      WalPhase         `json:"phase"`
+	Verify     WalVerify        `json:"verification"`
+	Rollback   WalRoll          `json:"rollback"`
 	Conflict   ConflictMetadata `json:"conflict,omitempty"`
+	FailureSig string           `json:"failure_signature,omitempty"`
+	RetryCount int              `json:"retry_count"`
+}
+
+type FailureSignature struct {
+	Engine     string `json:"engine"`
+	Opcode     uint8  `json:"opcode"`
+	Target     string `json:"target_uuid"`
+	ErrorCode  string `json:"error_code"`
+	Location   string `json:"location"` // File:Line
 }
 
 type ConflictMetadata struct {

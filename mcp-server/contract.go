@@ -301,6 +301,29 @@ const (
 	PhaseWaitHuman   WalPhase = "WAIT_HUMAN_LOCK"
 )
 
+type FailureClass string
+
+const (
+	FailSyntax            FailureClass = "SyntaxError"
+	FailDependency        FailureClass = "DependencyMissing"
+	FailNamespace         FailureClass = "NamespaceCollision"
+	FailAssetMismatch     FailureClass = "AssetMismatch"
+	FailInvalidState      FailureClass = "InvalidState"
+	FailToolUnavailable   FailureClass = "ToolUnavailable"
+	FailPolicyViolation   FailureClass = "PolicyViolationRisk"
+	FailUnknown           FailureClass = "Unknown"
+)
+
+type RolePermissions struct {
+	CanExecute  bool `json:"can_execute"`
+	CanRetry    bool `json:"can_retry"`
+	MaxRetries  int  `json:"max_retries,omitempty"`
+	CanEscalate bool `json:"can_escalate,omitempty"`
+	CanFreeze   bool `json:"can_freeze,omitempty"`
+}
+
+type PermissionsMask map[string]RolePermissions
+
 type WalEntry struct {
 	IntentID   uint64           `json:"intent_id"`
 	ParentHash string           `json:"parent_hash"`
@@ -314,7 +337,11 @@ type WalEntry struct {
 	Rollback   WalRoll          `json:"rollback"`
 	Conflict   ConflictMetadata `json:"conflict,omitempty"`
 	FailureSig string           `json:"failure_signature,omitempty"`
+	FailureClass FailureClass   `json:"failure_class,omitempty"`
 	RetryCount int              `json:"retry_count"`
+	EscalationLevel int         `json:"escalation_level"`
+	Permissions PermissionsMask `json:"permissions_mask,omitempty"`
+	SystemHealth string         `json:"system_health"` // SAFE | QUARANTINED
 }
 
 type FailureSignature struct {

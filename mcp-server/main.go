@@ -98,6 +98,10 @@ var (
 	failureRegistry = make(map[string]int) // Hash -> Count
 	registryMu      sync.Mutex
 
+	// Escalation Mutex (System-wide serial failure handling)
+	escalationMu sync.Mutex
+	escalatedPipeline string // pipeline_id
+
 	// Unit Normalization
 	unitSettings = make(map[string]VibeUnitSettings)
 	unitMu       sync.RWMutex
@@ -953,11 +957,21 @@ func processWorkResult(engine, path string) {
 	
 	if res.Status == "FAILURE" {
 		phase = PhaseFailed
-		// Loop B (Foreman) Logic: Anti-Thrashing
+		
+		// 1. Escalation Mutex Check
+		escalationMu.Lock()
+		if escalatedPipeline == "" {
+			escalatedPipeline = res.WorkOrderID // Use ID as simple pipeline ref
+			log.Printf("🛡️ Escalation Mutex: Pipeline %s has claimed the error-handling lock.", escalatedPipeline)
+		}
+		isLockedByMe := escalatedPipeline == res.WorkOrderID
+		escalationMu.Unlock()
+
+		// 2. Loop B (Foreman) Logic: Anti-Thrashing
 		sig := FailureSignature{
 			Engine: engine,
 			ErrorCode: res.Error,
-			Target: res.WorkOrderID, // Target UUID would be in context
+			Target: res.WorkOrderID, 
 		}
 		sigHash = computeFailureSignature(sig)
 		
@@ -969,9 +983,18 @@ func processWorkResult(engine, path string) {
 		if count >= 2 {
 			phase = PhaseTerminal
 			log.Printf("🚨 Anti-Thrashing: Failure signature detected twice. Transitioning to TERMINAL.")
-		} else {
+		} else if isLockedByMe {
 			phase = PhaseHalted
+		} else {
+			phase = PhaseWaitHuman // Wait for the mutex to clear
 		}
+	}
+
+	// 3. Permission Mask Reduction (Simulated)
+	permissions := make(PermissionsMask)
+	if phase == PhaseHalted {
+		permissions["Flash"] = RolePermissions{CanExecute: true, CanRetry: false}
+		permissions["Pro"] = RolePermissions{CanExecute: false, CanRetry: true, MaxRetries: 1}
 	}
 
 	// Finalize WAL or update state machine
@@ -983,6 +1006,7 @@ func processWorkResult(engine, path string) {
 		"phase": phase,
 		"hash": res.Hash,
 		"failure_signature": sigHash,
+		"permissions_mask": permissions,
 	})
 	
 	os.Remove(path)
